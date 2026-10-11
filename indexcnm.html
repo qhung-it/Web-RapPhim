@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Bebas+Neue&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="stylecnm.css">
+<link rel="stylesheet" href="features.css">
 </head>
 <body>
 
@@ -35,7 +36,7 @@
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
         <input type="search" id="search" placeholder="Tên phim, đạo diễn, diễn viên..." aria-label="Tìm phim">
       </div>
-      <div class="user-avatar"><img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80" alt="Tài khoản"></div>
+      <div id="acct" class="acct"></div>
     </div>
   </header>
 
@@ -70,6 +71,7 @@
         <button class="pill" data-f="2D">2D</button>
         <button class="pill" data-f="3D">3D</button>
       </div>
+      <div class="filter-extra"><select id="f-genre" aria-label="Lọc theo thể loại"></select><select id="f-age" aria-label="Lọc theo độ tuổi"><option value="">Mọi độ tuổi</option><option>P</option><option>T13</option><option>T16</option><option>T18</option></select></div>
     </div>
     <div class="movie-grid" id="movie-grid"></div>
     <div class="empty-state" id="empty-state" hidden>
@@ -101,6 +103,7 @@
 
   <footer class="site-footer">© 2026 HoangViet · Hotline 08 14149 579 · Giờ mở cửa 08:00 – 23:30</footer>
 
+  <div id="cx-modal" class="cx-backdrop" hidden></div>
   <div id="detail" class="detail-backdrop" hidden role="dialog" aria-modal="true" aria-label="Chi tiết phim"></div>
 
   <!-- POPUP ĐẶT VÉ -->
@@ -182,6 +185,7 @@
       <section class="pos-col pos-order"><h3>3. Đơn hàng <span class="pos-state" id="pos-state">Sẵn sàng</span></h3>
         <div class="pos-lines" id="pos-lines"></div>
         <div class="pos-combos" id="pos-combos"></div>
+        <div class="pos-input-group"><label for="pos-name">Tên khách (không bắt buộc)</label><input type="text" class="pos-input" id="pos-name" maxlength="40" placeholder="Nguyễn Văn B"></div>
         <div class="pos-input-group"><label for="pos-phone">SĐT khách (thẻ thành viên, thử 0908123456 hoặc 0912345678)</label><input type="tel" class="pos-input" id="pos-phone" inputmode="numeric" maxlength="10" placeholder="09xxxxxxxx"><span class="pos-member" id="pos-member"></span></div>
         <div class="pos-input-group"><label for="pos-promo">Khuyến mãi</label><select class="pos-input" id="pos-promo"></select></div>
         <div class="pos-total"><span>Tổng</span><strong id="pos-total">0đ</strong></div>
@@ -220,5 +224,11 @@
 <div id="adm-dialog" class="adm-dialog" hidden></div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <script src="scriptcnm.js"></script>
+<script src="store.js"></script>
+<script src="movies-ext.js"></script>
+<script src="auth.js"></script>
+<script src="account.js"></script>
+<script src="staff-pro.js"></script>
+<script src="admin-pro.js"></script>
 </body>
 </html>
