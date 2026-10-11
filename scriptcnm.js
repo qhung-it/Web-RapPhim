@@ -31,7 +31,8 @@ const PROMOS = {
 const PRICE = { standard: 120000, vip: 150000, couple: 280000 };
 const TYPE_NAME = { standard: 'Thường', vip: 'VIP', couple: 'Ghế đôi' };
 const ROWS = ['A', 'B', 'C', 'D', 'E', 'F'];
-const rowType = r => r === 'F' ? 'couple' : 'CD'.includes(r) ? 'vip' : 'standard';
+const rowType = r => DB.seatRows?.find(x => x.id === r)?.t || (r === 'F' ? 'couple' : 'CD'.includes(r) ? 'vip' : 'standard');
+const rowCount = r => Number(DB.seatRows?.find(x => x.id === r)?.cnt) || (r === 'F' ? 5 : 10);
 
 const today = new Date();
 const DATES = [0, 1, 2].map(i => { const d = new Date(today); d.setDate(d.getDate() + i); const dd = String(d.getDate()).padStart(2, '0'), mm = String(d.getMonth() + 1).padStart(2, '0'); return { k: `${dd}/${mm}`, l: (i ? ['', 'Ngày mai', 'Ngày kia'][i] : 'Hôm nay') + ` ${dd}/${mm}` }; });
@@ -47,7 +48,7 @@ const showKey = s => `${s.m.id}|${s.date}|${s.cin.id}|${s.time}`;
 function soldFor(s) {
   const key = showKey(s); let h = 0; for (const ch of key) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
   const set = new Set(S.booked[key] || []);
-  for (let i = 0; i < 9; i++) { h = (h * 1103515245 + 12345) >>> 0; const r = ROWS[h % 6], max = r === 'F' ? 5 : 10; set.add(r + (1 + (h >> 8) % max)); }
+  for (let i = 0; i < 9; i++) { h = (h * 1103515245 + 12345) >>> 0; const r = ROWS[h % ROWS.length], max = rowCount(r); set.add(r + (1 + (h >> 8) % max)); }
   return set;
 }
 function totals(sel, combos, promo) {
@@ -99,7 +100,7 @@ function initHero() {
   $('#hero-dots').onclick = e => { const d = e.target.closest('.dot'); if (d) { showHero(+d.dataset.i); startHero(); } };
   $('#hero-book').onclick = () => openDetail(heroList[heroIdx], true);
   $('#hero-detail').onclick = () => openDetail(heroList[heroIdx]);
-  $('#hero-trailer').onclick = () => toast('Trailer sẽ được cập nhật sớm');
+  $('#hero-trailer').onclick = () => playTrailer(heroList[heroIdx]);
   $('#hero-backdrop').style.backgroundImage = `url('${img(heroList[0].bd, 1920)}')`;
   fillHero(0); startHero();
 }
@@ -139,7 +140,7 @@ function initMovies() {
       <div class="poster-info"><div class="meta-line"><span class="rating">★ ${m.r}</span><span>${m.d}</span><span>${m.fm.join(' / ')}</span></div>
         <h3 class="movie-name">${m.t}</h3><p class="genre">${m.g}</p></div>
     </article>`).join('');
-  grid.onclick = e => { const c = e.target.closest('.cinema-poster-card'); if (!c) return; const m = MOVIES.find(x => x.id === c.dataset.id), a = e.target.closest('[data-act]')?.dataset.act; if (a === 'trailer') return toast('Trailer sẽ được cập nhật sớm'); openDetail(m, a === 'book'); };
+  grid.onclick = e => { const c = e.target.closest('.cinema-poster-card'); if (!c) return; const m = MOVIES.find(x => x.id === c.dataset.id), a = e.target.closest('[data-act]')?.dataset.act; if (a === 'trailer') return playTrailer(m); openDetail(m, a === 'book'); };
   grid.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { const c = e.target.closest('.cinema-poster-card'); if (c) { e.preventDefault(); openDetail(MOVIES.find(x => x.id === c.dataset.id)); } } };
   $('#filters').onclick = e => { const p = e.target.closest('.pill'); if (!p) return; S.filter = p.dataset.f; $$('#filters .pill').forEach(x => x.classList.toggle('active', x === p)); applyFilter(); };
   $('#search').oninput = e => { S.q = e.target.value; applyFilter(); if (S.q) $('#movies').scrollIntoView({ behavior: 'smooth' }); };
@@ -199,7 +200,7 @@ function initStatic() {
 
 function drawSeats(el, sold, selected, onToggle) {
   el.innerHTML = ROWS.map(r => {
-    const t = rowType(r), n = t === 'couple' ? 5 : 10; let h = '';
+    const t = rowType(r), n = rowCount(r); let h = '';
     for (let i = 1; i <= n; i++) {
       const id = r + i, isSold = sold.has(id), isSel = selected.some(s => s.id === id);
       h += `<button type="button" class="seat-node ${t}${isSold ? ' sold' : ''}${isSel ? ' selected' : ''}${i === n / 2 | 0 && t !== 'couple' && i === 5 ? ' aisle' : ''}${t === 'couple' && i === 3 ? ' aisle' : ''}" data-id="${id}" data-t="${t}" data-tip="${id} · ${TYPE_NAME[t]} · ${fmt(PRICE[t])}" aria-label="Ghế ${id}, ${TYPE_NAME[t]}, ${fmt(PRICE[t])}${isSold ? ', đã bán' : ''}" aria-pressed="${isSel}" ${isSold ? 'disabled' : ''}>${t === 'couple' ? '<b>♥</b>' : ''}</button>`;
@@ -370,7 +371,7 @@ function qr(text) {
 
 
 const D = { m: null, cin: null, date: DATES[0].k };
-const showTimes = c => TIMES.filter((t, i) => (i + c.id.charCodeAt(0)) % 5 !== 4);
+let showTimes = c => TIMES.filter((t, i) => (i + c.id.charCodeAt(0)) % 5 !== 4);
 const fitCinemas = m => { const l = CINEMAS.filter(c => c.fm.some(f => m.fm.includes(f))); return l.length ? l : CINEMAS; };
 function initDetail() {
   $('#detail').onclick = e => {
@@ -378,7 +379,7 @@ function initDetail() {
     const c = e.target.closest('[data-cin]'); if (c) { D.cin = CINEMAS.find(x => x.id === c.dataset.cin); return renderBook(); }
     const dt = e.target.closest('[data-date]'); if (dt) { D.date = dt.dataset.date; return renderBook(); }
     const t = e.target.closest('.time-chip'); if (t && !t.disabled) return openBooking(D.m, { cin: D.cin, time: t.dataset.t, date: D.date });
-    if (e.target.closest('[data-trailer]')) toast('Trailer sẽ được cập nhật sớm');
+    if (e.target.closest('[data-trailer]')) playTrailer(D.m);
     if (e.target.closest('[data-scroll]')) $('#d-book').scrollIntoView({ behavior: 'smooth' });
   };
 }
@@ -582,7 +583,7 @@ function dlg(html) { const d = $('#adm-dialog'); d.innerHTML = `<div class="adm-
 function closeDlg() { $('#adm-dialog').hidden = true; }
 function openForm(id) {
   const mod = A.v, M = MOD[mod], it = id ? DB[mod].find(x => x.id === id) : null;
-  dlg(`<h3>${it ? 'Sửa' : 'Thêm'} · ${M.title}</h3><form id="adm-form" novalidate>${M.f.map(f => { const v = it ? it[f.k] : M.def()[f.k]; const val = Array.isArray(v) ? v.join(', ') : (v ?? '');
+  dlg(`<h3>${it ? 'Sửa' : 'Thêm'} · ${M.title}</h3><form id="adm-form" novalidate>${M.f.filter(f => !f.ro).map(f => { const v = it ? it[f.k] : M.def()[f.k]; const val = Array.isArray(v) ? v.join(', ') : (v ?? '');
     return `<label>${f.l}${f.req ? ' *' : ''}${f.sel ? `<select name="${f.k}">${f.sel.map(o => `<option value="${o[0]}"${o[0] === val ? ' selected' : ''}>${o[1]}</option>`).join('')}</select>` : `<input name="${f.k}" type="${f.num ? 'number' : 'text'}" ${f.num ? 'min="0"' : ''} value="${esc(val)}">`}</label>`; }).join('')}
     <p class="form-err" id="form-err" role="alert"></p><div class="dlg-actions"><button type="button" class="btn-back-adm" data-x>Hủy</button><button type="submit" class="btn-adm-action">Lưu</button></div></form>`);
   $('#adm-form').onsubmit = e => { e.preventDefault(); saveForm(it); };
