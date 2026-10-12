@@ -1,29 +1,41 @@
-<persistence xmlns="https://jakarta.ee/xml/ns/persistence" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://jakarta.ee/xml/ns/persistence https://jakarta.ee/xml/ns/persistence/persistence_3_2.xsd"
+<?xml version="1.0" encoding="UTF-8"?>
+<persistence xmlns="https://jakarta.ee/xml/ns/persistence"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="https://jakarta.ee/xml/ns/persistence https://jakarta.ee/xml/ns/persistence/persistence_3_2.xsd"
              version="3.2">
     <persistence-unit name="AppRapPhim">
+
+        <!-- Khai báo danh sách các Entity để Hibernate nhận diện trên Tomcat -->
+        <class>com.example.studentapp.apprapphim.model.entity.ChiTietCombo</class>
+        <class>com.example.studentapp.apprapphim.model.entity.Combo</class>
+        <class>com.example.studentapp.apprapphim.model.entity.DonDatVe</class>
+        <class>com.example.studentapp.apprapphim.model.entity.Ghe</class>
+        <class>com.example.studentapp.apprapphim.model.entity.KhachHang</class>
+        <class>com.example.studentapp.apprapphim.model.entity.KhuyenMai</class>
+        <class>com.example.studentapp.apprapphim.model.entity.LoaiKhachHang</class>
+        <class>com.example.studentapp.apprapphim.model.entity.NhanVien</class>
+        <class>com.example.studentapp.apprapphim.model.entity.Phim</class>
+        <class>com.example.studentapp.apprapphim.model.entity.PhongChieu</class>
+        <class>com.example.studentapp.apprapphim.model.entity.Rap</class>
+        <class>com.example.studentapp.apprapphim.model.entity.SuatChieu</class>
+        <class>com.example.studentapp.apprapphim.model.entity.ThanhToan</class>
+        <class>com.example.studentapp.apprapphim.model.entity.Ve</class>
+
         <properties>
             <!-- SQL Server JDBC Driver -->
-            <property
-                    name="jakarta.persistence.jdbc.driver"
-                    value="com.microsoft.sqlserver.jdbc.SQLServerDriver"/>
+            <property name="jakarta.persistence.jdbc.driver"
+                      value="com.microsoft.sqlserver.jdbc.SQLServerDriver"/>
 
-            <!-- SQL Server -->
-            <property
-                    name="jakarta.persistence.jdbc.url"
-                    value="jdbc:sqlserver://localhost:1433;databaseName=DB_RapPhim;integratedSecurity=true;encrypt=true;trustServerCertificate=true"/>
+            <property name="jakarta.persistence.jdbc.url"
+                      value="jdbc:sqlserver://localhost:1433;databaseName=db_web_rapphim;encrypt=true;trustServerCertificate=true"/>
 
-            <!-- Hibernate -->
-            <property
-                    name="hibernate.connection.pool_size"
-                    value="100"/>
+            <property name="jakarta.persistence.jdbc.user" value="sa"/>
+            <property name="jakarta.persistence.jdbc.password" value="123456"/>
 
-            <!-- Hiển thị SQL trong console -->
-            <property
-                    name="hibernate.show_sql"
-                    value="true"/>
-            <property
-                    name="hibernate.format_sql"
-                    value="true"/>
+            <!-- Cấu hình Hibernate -->
+            <property name="hibernate.hbm2ddl.auto" value="update"/>
+            <property name="hibernate.show_sql" value="true"/>
+            <property name="hibernate.format_sql" value="true"/>
         </properties>
     </persistence-unit>
 </persistence>

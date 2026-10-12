@@ -157,17 +157,66 @@ renderAdmin = function () {
   _renderAdmin();
 };
 
-function loginAdmin(u, p) { if (u !== ADMIN_ACC.user || p !== ADMIN_ACC.pw) return 'Sai tên đăng nhập hoặc mật khẩu.'; CTX.admin = true; return ''; }
+async function loginAdmin(u, p) {
+  const data = await API.post('staff/login', { email: u, password: p });
+  const x = data.staff || data;
+  if (!x || !(x.maNV || x.id)) return 'Máy chủ không trả về thông tin nhân viên quản trị.';
+  if (!['Admin', 'QuanLy'].includes(x.chucVu)) { API.post('staff/logout').catch(() => {}); return 'Tài khoản không có quyền truy cập khu vực quản trị.'; }
+  CTX.admin = true;
+  CTX.adminStaff = x;
+  return '';
+}
 document.addEventListener('DOMContentLoaded', () => {
-  mkGate('admin', 'Đăng nhập quản trị', 'Demo: admin / admin123', loginAdmin);
-  $('#adm-menu').innerHTML = [['dash', 'Tổng quan'], ['stats', 'Thống kê doanh thu'], ['movies', 'Phim'], ['showtimes', 'Suất chiếu'], ['cinemas', 'Rạp'], ['rooms', 'Phòng chiếu'], ['seatrows', 'Sơ đồ ghế'], ['seattypes', 'Giá ghế'], ['combos', 'Combo bắp nước'], ['promos', 'Khuyến mãi'], ['tiers', 'Loại khách hàng'], ['customers', 'Khách hàng'], ['orders', 'Đơn đặt vé'], ['tickets', 'Vé'], ['staff', 'Nhân sự']]
-    .map(([k, l], i) => `<a href="#" class="adm-item${i ? '' : ' active'}" data-v="${k}">${l}</a>`).join('');
+  mkGate('admin', 'Đăng nhập quản trị', 'Nhập email và mật khẩu tài khoản nhân viên có quyền quản trị trong database.', loginAdmin);
+  const adminMenu = [['dash', 'Tổng quan'], ['stats', 'Thống kê doanh thu'], ['movies', 'Phim'], ['showtimes', 'Suất chiếu'], ['cinemas', 'Rạp'], ['rooms', 'Phòng chiếu'], ['seatrows', 'Sơ đồ ghế'], ['seattypes', 'Giá ghế'], ['combos', 'Combo bắp nước'], ['promos', 'Khuyến mãi'], ['tiers', 'Loại khách hàng'], ['customers', 'Khách hàng'], ['orders', 'Đơn đặt vé'], ['tickets', 'Vé']];
+  if (CTX.adminStaff?.chucVu === 'Admin') adminMenu.push(['staff', 'Nhân sự']);
+  $('#adm-menu').innerHTML = adminMenu.map(([k, l], i) => `<a href="#" class="adm-item${i ? '' : ' active'}" data-v="${k}">${l}</a>`).join('');
   $('.adm-sidebar').insertAdjacentHTML('beforeend', '<button class="adm-logout" id="adm-logout">Đăng xuất</button>');
-  $('#adm-logout').onclick = () => { CTX.admin = false; lockView('admin'); toast('Đã đăng xuất'); };
-  $('#view-admin').addEventListener('click', e => {
+  $('#adm-logout').onclick = () => { API.post('staff/logout').catch(() => {}); CTX.admin = false; CTX.adminStaff = null; lockView('admin'); toast('Đã đăng xuất'); };
+  $('#view-admin').addEventListener('click', async e => {
     const b = e.target.closest('[data-tk]'); if (!b) return;
-    const o = DB.orders.find(x => x.id === b.dataset.id); if (!o) return;
-    useTicket(o, b.dataset.seat, b.dataset.tk === 'use'); paintTickets(); toast(b.dataset.tk === 'use' ? 'Đã đánh dấu vé đã sử dụng' : 'Đã hoàn tác');
+    const orderId = b.dataset.id;
+    const action = b.dataset.tk;
+    // API hiện tại chỉ hỗ trợ POST /api/tickets/{maVe}/use hoặc /validate.
+    // Không gọi theo mã đơn hàng vì endpoint yêu cầu mã vé.
+    const orderTickets = await API.get('tickets').catch(err => { toast(err.message || 'Không tải được danh sách vé'); return []; });
+    const ticket = (Array.isArray(orderTickets) ? orderTickets : []).find(t =>
+      String(t.maDon || '') === String(orderId) &&
+      String(t.soGhe || '') === String(b.dataset.seat || '')
+    );
+    if (!ticket) { toast('Không tìm thấy mã vé tương ứng. Hãy tải lại danh sách vé.'); return; }
+    try {
+      await API.post(`tickets/${encodeURIComponent(ticket.maVe)}/${action === 'use' ? 'use' : 'validate'}`);
+      toast(action === 'use' ? 'Đã đánh dấu vé đã sử dụng' : 'Đã kiểm tra vé');
+      renderTickets();
+    } catch (err) { toast(err.message || 'Không thể cập nhật trạng thái vé'); }
   });
   syncLayout();
 });
+
+/* Khuyến mãi: đồng bộ với entity KhuyenMai (maKM, tenKM, moTa,
+   phanTramGiam, ngayBatDau, ngayKetThuc, trangThai). */
+MOD.promos = {
+  title: 'Khuyến mãi',
+  cols: ['code', 'desc', 'value', 'start', 'end', 'st'],
+  f: [
+    { k: 'code', l: 'Mã khuyến mãi', req: 1, upper: 1 },
+    { k: 'desc', l: 'Tên / mô tả khuyến mãi', req: 1 },
+    { k: 'value', l: 'Phần trăm giảm (%)', num: 1, req: 1 },
+    { k: 'start', l: 'Ngày bắt đầu', date: 1, req: 1 },
+    { k: 'end', l: 'Ngày kết thúc', date: 1, req: 1 },
+    { k: 'st', l: 'Trạng thái', sel: [['on', 'Đang hoạt động'], ['off', 'Ngừng hoạt động']] }
+  ],
+  def: () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const later = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
+    return { id: 'KM' + Date.now().toString(36).toUpperCase(), code: 'KM' + Date.now().toString(36).toUpperCase(), desc: '', value: 10, start: today, end: later, st: 'on' };
+  },
+  check: d => {
+    if (!d.code || !/^[A-Z0-9_-]{2,20}$/.test(d.code)) return 'Mã khuyến mãi gồm 2–20 ký tự chữ in hoa, số, dấu gạch ngang hoặc gạch dưới.';
+    if (Number(d.value) <= 0 || Number(d.value) > 100) return 'Phần trăm giảm phải lớn hơn 0 và không quá 100%.';
+    if (!d.start || !d.end) return 'Vui lòng chọn ngày bắt đầu và kết thúc.';
+    if (d.end < d.start) return 'Ngày kết thúc phải bằng hoặc sau ngày bắt đầu.';
+    return '';
+  }
+};

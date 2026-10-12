@@ -16,15 +16,15 @@ const val = (f, n) => f.elements[n].value.trim();
 function renderAuth(mode = 'login') {
   const T = {
     login: `<h2>Đăng nhập</h2><p class="cx-sub">Đăng nhập để đặt vé, xem vé đã mua và lịch sử đặt vé.</p>
-      <form data-form="login" novalidate>${fld('ident', 'Email hoặc số điện thoại', 'text', 'autocomplete="username"')}${fld('pw', 'Mật khẩu', 'password', 'autocomplete="current-password"')}<p class="form-err" role="alert"></p><button class="btn-primary-gold btn-large">Đăng nhập</button></form>
-      <div class="cx-links"><button data-auth="forgot">Quên mật khẩu?</button><button data-auth="register">Tạo tài khoản mới</button></div><small class="cx-hint">Demo: khoa@example.com / 123456</small>`,
+      <form data-form="login" novalidate>${fld('ident', 'Email', 'text', 'autocomplete="username"')}${fld('pw', 'Mật khẩu', 'password', 'autocomplete="current-password"')}<p class="form-err" role="alert"></p><button class="btn-primary-gold btn-large">Đăng nhập</button></form>
+      <div class="cx-links"><button data-auth="forgot">Quên mật khẩu?</button><button data-auth="register">Tạo tài khoản mới</button></div><small class="cx-hint">Sử dụng tài khoản đã đăng ký trong hệ thống.</small>`,
     register: `<h2>Tạo tài khoản</h2><p class="cx-sub">Miễn phí, đặt vé chỉ mất vài giây.</p>
       <form data-form="register" novalidate>${fld('n', 'Họ và tên')}${fld('email', 'Email', 'email', 'autocomplete="email"')}${fld('phone', 'Số điện thoại', 'tel', 'inputmode="numeric" maxlength="10"')}${fld('dob', 'Ngày sinh', 'date')}${fld('pw', 'Mật khẩu (tối thiểu 6 ký tự)', 'password', 'autocomplete="new-password"')}${fld('pw2', 'Nhập lại mật khẩu', 'password', 'autocomplete="new-password"')}
       <label class="cx-check"><input type="checkbox" name="student"> Tôi là học sinh, sinh viên (nhận ưu đãi ${tierOf('student').pct}%)</label><p class="form-err" role="alert"></p><button class="btn-primary-gold btn-large">Đăng ký</button></form>
       <div class="cx-links"><button data-auth="login">Đã có tài khoản? Đăng nhập</button></div>`,
     forgot: `<h2>Quên mật khẩu</h2><p class="cx-sub">Nhập email đã đăng ký, chúng tôi sẽ gửi mã xác nhận.</p>
       <form data-form="forgot" novalidate>${fld('email', 'Email', 'email')}<p class="form-err" role="alert"></p><button class="btn-primary-gold btn-large">Gửi mã xác nhận</button></form><div class="cx-links"><button data-auth="login">Quay lại đăng nhập</button></div>`,
-    reset: `<h2>Đặt lại mật khẩu</h2><p class="cx-sub">Mã xác nhận đã gửi tới ${esc(AUTHQ.email || '')}. <em>(Demo: mã là ${AUTHQ.code})</em></p>
+    reset: `<h2>Đặt lại mật khẩu</h2><p class="cx-sub">Mã xác nhận đã gửi tới ${esc(AUTHQ.email || '')}. <em>Mã OTP có hiệu lực trong 5 phút.</em></p>
       <form data-form="reset" novalidate>${fld('code', 'Mã xác nhận', 'text', 'inputmode="numeric" maxlength="6"')}${fld('pw', 'Mật khẩu mới', 'password', 'autocomplete="new-password"')}${fld('pw2', 'Nhập lại mật khẩu mới', 'password', 'autocomplete="new-password"')}<p class="form-err" role="alert"></p><button class="btn-primary-gold btn-large">Đổi mật khẩu</button></form>`
   };
   cxOpen(T[mode]);
@@ -33,6 +33,56 @@ function loginAs(c) {
   CTX.user = c; renderAcct(); cxClose(); toast(`Xin chào ${c.n}`);
   const n = AUTHQ.next; AUTHQ.next = null; n && n();
 }
+
+async function apiAuth(path, payload) {
+  const response = await fetch(new URL(`api/${path}`, document.baseURI).toString(), {
+    method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || data.success === false) throw new Error(data.message || 'Yêu cầu không thành công.');
+  return data;
+}
+function customerForUi(user) {
+  const rawTier = String(user.tier || 'regular').toLowerCase();
+  const tier = rawTier.includes('sv') || rawTier.includes('student') || rawTier.includes('sinhvien') ? 'student' : rawTier.includes('gold') || rawTier.includes('vang') ? 'gold' : rawTier.includes('silver') || rawTier.includes('bac') ? 'silver' : 'regular';
+  return { id: user.id || user.maKH, n: user.n || user.hoTen, email: user.email, phone: user.phone || user.soDienThoai || '', dob: user.dob || user.ngaySinh || '', tier, st: 'on' };
+}
+async function submitAuthToBackend(f) {
+  const mode = f.dataset.form;
+  if (mode === 'login') {
+    const ident = val(f, 'ident').toLowerCase(), password = f.elements.pw.value;
+    if (!ident || !password) throw new Error('Vui lòng nhập đầy đủ thông tin.');
+    const data = await apiAuth('auth/login', { email: ident, password });
+    loginAs(customerForUi(data.user));
+    return;
+  }
+  if (mode === 'register') {
+    const n=val(f,'n'), email=val(f,'email').toLowerCase(), phone=val(f,'phone'), dob=val(f,'dob'), pw=f.elements.pw.value;
+    if(n.length<2)throw new Error('Vui lòng nhập họ tên.');
+    if(!emailOk(email))throw new Error('Email không hợp lệ.');
+    if(!phoneOk(phone))throw new Error('Số điện thoại gồm 10 chữ số, bắt đầu bằng 0.');
+    if(pw.length<6)throw new Error('Mật khẩu tối thiểu 6 ký tự.');
+    if(pw!==f.elements.pw2.value)throw new Error('Mật khẩu nhập lại không khớp.');
+    let maLoai;
+    try { const r=await fetch(new URL('api/tiers', document.baseURI).toString(),{credentials:'same-origin'}); if(r.ok){const list=await r.json(); const preferred=list.find(x=>f.elements.student.checked ? /sinh|sinh viên|student|học/i.test(`${x.maLoai} ${x.tenLoai}`) : /thường|regular/i.test(`${x.maLoai} ${x.tenLoai}`)); maLoai=(preferred||list[0]||{}).maLoai;} } catch (_) {}
+    const data=await apiAuth('auth/register',{hoTen:n,email,soDienThoai:phone,ngaySinh:dob||null,matKhau:pw,maLoai});
+    loginAs(customerForUi(data.user)); toast('Đăng ký thành công'); return;
+  }
+  if (mode === 'forgot') {
+    const email=val(f,'email').toLowerCase(); if(!emailOk(email))throw new Error('Email không hợp lệ.');
+    await apiAuth('auth/forgot',{email}); AUTHQ.email=email; AUTHQ.code=null; renderAuth('reset'); toast('Nếu email tồn tại và cấu hình email hợp lệ, mã OTP sẽ được gửi.'); return;
+  }
+  if (mode === 'reset') {
+    const otp=val(f,'code'), pw=f.elements.pw.value;
+    if(!/^\d{6}$/.test(otp))throw new Error('Mã OTP gồm 6 chữ số.');
+    if(pw.length<6)throw new Error('Mật khẩu mới tối thiểu 6 ký tự.');
+    if(pw!==f.elements.pw2.value)throw new Error('Mật khẩu nhập lại không khớp.');
+    await apiAuth('auth/verify-otp',{email:AUTHQ.email,otp});
+    await apiAuth('auth/reset-password',{email:AUTHQ.email,otp,matKhauMoi:pw});
+    AUTHQ.code=null; renderAuth('login'); toast('Đã đổi mật khẩu. Hãy đăng nhập lại');
+  }
+}
+
 const FORMS = {
   login(f) {
     const id = val(f, 'ident').toLowerCase(), c = DB.customers.find(x => (x.email || '').toLowerCase() === id || x.phone === id);
@@ -104,21 +154,56 @@ function mkGate(role, title, hint, login) {
   const v = $('#view-' + role), g = document.createElement('div'); g.className = 'gate';
   g.innerHTML = `<form class="gate-box" novalidate><h2>${title}</h2><label class="cx-f">Tên đăng nhập<input name="u" autocomplete="username"></label><label class="cx-f">Mật khẩu<input name="p" type="password" autocomplete="current-password"></label><p class="form-err" role="alert"></p><button class="btn-primary-gold btn-large">Đăng nhập</button><small class="cx-hint">${hint}</small></form>`;
   v.prepend(g); v.classList.add('locked');
-  g.querySelector('form').onsubmit = e => {
-    e.preventDefault(); const f = e.target, err = login(f.elements.u.value.trim(), f.elements.p.value);
-    f.querySelector('.form-err').textContent = err || ''; if (err) return;
-    f.reset(); v.classList.remove('locked'); scrollTo(0, 0);
+  g.querySelector('form').onsubmit = async e => {
+    e.preventDefault(); const f = e.target, button = f.querySelector('button');
+    const errorBox = f.querySelector('.form-err');
+    errorBox.textContent = ''; button.disabled = true;
+    try {
+      const err = await login(f.elements.u.value.trim(), f.elements.p.value);
+      if (err) { errorBox.textContent = err; return; }
+      f.reset(); v.classList.remove('locked'); scrollTo(0, 0);
+    } catch (error) {
+      errorBox.textContent = error?.message || 'Không thể đăng nhập. Vui lòng thử lại.';
+    } finally { button.disabled = false; }
   };
 }
 const lockView = role => $('#view-' + role).classList.add('locked');
 
 document.addEventListener('DOMContentLoaded', () => {
   renderAcct();
+  // Khôi phục phiên đăng nhập từ HttpSession của Java sau khi tải lại trang.
+  // Không lưu mật khẩu/token trong localStorage; cookie phiên do máy chủ quản lý.
+  RapPhimAPI.currentCustomer().then(data => {
+    if (data && data.user && !CTX.user) {
+      CTX.user = customerForUi(data.user);
+      renderAcct();
+    }
+  }).catch(() => { /* Khách chưa đăng nhập: giữ giao diện khách */ });
   const cx = $('#cx-modal');
   cx.addEventListener('mousedown', e => { if (e.target === cx) cxClose(); });
-  cx.addEventListener('submit', e => {
+  cx.addEventListener('submit', async e => {
     const f = e.target.closest('[data-form]'); if (!f) return; e.preventDefault();
-    const err = FORMS[f.dataset.form](f); if (err) f.querySelector('.form-err').textContent = err;
+    const errorBox = f.querySelector('.form-err');
+    if (['login', 'register', 'forgot', 'reset'].includes(f.dataset.form)) {
+      errorBox.textContent = '';
+      const button = f.querySelector('button[type="submit"],button:not([type])');
+      if (button) { button.disabled = true; button.dataset.oldText = button.textContent; button.textContent = 'Đang xử lý...'; }
+      try { await submitAuthToBackend(f); }
+      catch (err) { errorBox.textContent = err.message || 'Không thể kết nối máy chủ. Hãy kiểm tra ứng dụng Java và database.'; }
+      finally { if (button) { button.disabled = false; button.textContent = button.dataset.oldText || 'Tiếp tục'; } }
+      return;
+    }
+    errorBox.textContent = '';
+    const button = f.querySelector('button[type="submit"],button:not([type])');
+    if (button) { button.disabled = true; button.dataset.oldText = button.textContent; button.textContent = 'Đang xử lý...'; }
+    try {
+      const err = await FORMS[f.dataset.form](f);
+      if (err) errorBox.textContent = err;
+    } catch (err) {
+      errorBox.textContent = err.message || 'Không thể hoàn tất thao tác.';
+    } finally {
+      if (button) { button.disabled = false; button.textContent = button.dataset.oldText || 'Tiếp tục'; }
+    }
   });
   document.addEventListener('click', e => {
     if (e.target.closest('[data-cx-close]') && e.target.closest('#cx-modal')) return cxClose();

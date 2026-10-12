@@ -92,6 +92,22 @@ public class KhachHangServiceImpl implements KhachHangService {
     }
 
     @Override
+    public boolean capNhatThongTin(String maKH, String hoTen, String email, String soDienThoai, java.time.LocalDate ngaySinh) {
+        if (maKH == null || maKH.isBlank() || hoTen == null || hoTen.isBlank()
+                || email == null || email.isBlank()) return false;
+        KhachHang current = khachHangDAO.findById(maKH);
+        if (current == null) return false;
+        KhachHang sameEmail = khachHangDAO.findByEmail(email.trim());
+        if (sameEmail != null && !maKH.equals(sameEmail.getMaKH())) return false;
+        current.setHoTen(hoTen.trim());
+        current.setEmail(email.trim());
+        current.setSoDienThoai(soDienThoai == null || soDienThoai.isBlank() ? null : soDienThoai.trim());
+        current.setNgaySinh(ngaySinh);
+        khachHangDAO.save(current);
+        return true;
+    }
+
+    @Override
     public boolean quenMatKhau(String email) {
         if (email == null || email.isBlank()) {
             return false;

@@ -13,6 +13,8 @@ public interface KhachHangService {
 
     boolean doiMatKhau(String maKH, String matKhauCu, String matKhauMoi);
 
+    boolean capNhatThongTin(String maKH, String hoTen, String email, String soDienThoai, java.time.LocalDate ngaySinh);
+
     boolean quenMatKhau(String email);
 
     boolean xacThucOTP(String email, String otp);
