@@ -10,20 +10,12 @@ import com.example.studentapp.apprapphim.model.entity.KhachHang;
 import com.example.studentapp.apprapphim.model.util.MailUtilRender;
 import com.example.studentapp.apprapphim.model.util.OTPInfo;
 
-import javax.crypto.SecretKeyFactory;
-import javax.crypto.spec.PBEKeySpec;
-import java.security.GeneralSecurityException;
 import java.security.SecureRandom;
-import java.util.Base64;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class KhachHangServiceImpl implements KhachHangService {
-
-    private static final int PBKDF2_ITERATIONS = 65_536;
-    private static final int SALT_LENGTH = 16;
-    private static final int HASH_LENGTH = 256;
 
     private static final long OTP_VALID_MILLIS = 5 * 60 * 1000L;
     private static final int MAX_OTP_ATTEMPTS = 5;
@@ -62,7 +54,7 @@ public class KhachHangServiceImpl implements KhachHangService {
             return false;
         }
 
-        khachHang.setMatKhau(hashPassword(khachHang.getMatKhau()));
+        khachHang.setMatKhau(khachHang.getMatKhau());
         khachHangDAO.save(khachHang);
         return true;
     }
@@ -78,18 +70,7 @@ public class KhachHangServiceImpl implements KhachHangService {
             return null;
         }
 
-        // Hỗ trợ dữ liệu cũ đang lưu plaintext và tự chuyển sang hash sau lần đăng nhập đúng.
-        if (kh.getMatKhau().startsWith("PBKDF2$")) {
-            return verifyPassword(matKhau, kh.getMatKhau()) ? kh : null;
-        }
-
-        if (matKhau.equals(kh.getMatKhau())) {
-            kh.setMatKhau(hashPassword(matKhau));
-            khachHangDAO.save(kh);
-            return kh;
-        }
-
-        return null;
+        return matKhau.equals(kh.getMatKhau()) ? kh : null;
     }
 
     @Override
@@ -101,11 +82,11 @@ public class KhachHangServiceImpl implements KhachHangService {
         }
 
         KhachHang kh = khachHangDAO.findById(maKH);
-        if (kh == null || !verifyStoredPassword(matKhauCu, kh.getMatKhau())) {
+        if (kh == null || !matKhauCu.equals(kh.getMatKhau())) {
             return false;
         }
 
-        kh.setMatKhau(hashPassword(matKhauMoi));
+        kh.setMatKhau(matKhauMoi);
         khachHangDAO.save(kh);
         return true;
     }
@@ -219,7 +200,7 @@ public class KhachHangServiceImpl implements KhachHangService {
             return false;
         }
 
-        khachHang.setMatKhau(hashPassword(matKhauMoi));
+        khachHang.setMatKhau(matKhauMoi);
         khachHangDAO.save(khachHang);
 
         clearOtp(emailKey);
@@ -230,71 +211,6 @@ public class KhachHangServiceImpl implements KhachHangService {
         otpMap.remove(emailKey);
         otpAttempts.remove(emailKey);
         verifiedOtp.remove(emailKey);
-    }
-
-    private boolean verifyStoredPassword(String rawPassword, String storedPassword) {
-        if (storedPassword == null) return false;
-
-        if (storedPassword.startsWith("PBKDF2$")) {
-            return verifyPassword(rawPassword, storedPassword);
-        }
-
-        return rawPassword.equals(storedPassword);
-    }
-
-    private String hashPassword(String password) {
-        try {
-            byte[] salt = new byte[SALT_LENGTH];
-            secureRandom.nextBytes(salt);
-
-            PBEKeySpec spec = new PBEKeySpec(
-                    password.toCharArray(),
-                    salt,
-                    PBKDF2_ITERATIONS,
-                    HASH_LENGTH
-            );
-
-            byte[] hash = SecretKeyFactory
-                    .getInstance("PBKDF2WithHmacSHA256")
-                    .generateSecret(spec)
-                    .getEncoded();
-
-            return "PBKDF2$"
-                    + PBKDF2_ITERATIONS + "$"
-                    + Base64.getEncoder().encodeToString(salt) + "$"
-                    + Base64.getEncoder().encodeToString(hash);
-        } catch (GeneralSecurityException e) {
-            throw new IllegalStateException("Không thể mã hóa mật khẩu.", e);
-        }
-    }
-
-    private boolean verifyPassword(String password, String stored) {
-        try {
-            String[] parts = stored.split("\\$", -1);
-            if (parts.length != 4 || !"PBKDF2".equals(parts[0])) {
-                return false;
-            }
-
-            int iterations = Integer.parseInt(parts[1]);
-            byte[] salt = Base64.getDecoder().decode(parts[2]);
-            byte[] expectedHash = Base64.getDecoder().decode(parts[3]);
-
-            PBEKeySpec spec = new PBEKeySpec(
-                    password.toCharArray(),
-                    salt,
-                    iterations,
-                    expectedHash.length * 8
-            );
-
-            byte[] actualHash = SecretKeyFactory
-                    .getInstance("PBKDF2WithHmacSHA256")
-                    .generateSecret(spec)
-                    .getEncoded();
-
-            return java.security.MessageDigest.isEqual(expectedHash, actualHash);
-        } catch (Exception e) {
-            return false;
-        }
     }
 
     @Override

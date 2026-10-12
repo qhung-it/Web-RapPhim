@@ -194,7 +194,6 @@ document.addEventListener('DOMContentLoaded', () => {
   syncLayout();
 });
 
-
 /* Khuyến mãi: đồng bộ với entity KhuyenMai (maKM, tenKM, moTa,
    phanTramGiam, ngayBatDau, ngayKetThuc, trangThai). */
 MOD.promos = {

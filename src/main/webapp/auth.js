@@ -33,6 +33,7 @@ function loginAs(c) {
   CTX.user = c; renderAcct(); cxClose(); toast(`Xin chào ${c.n}`);
   const n = AUTHQ.next; AUTHQ.next = null; n && n();
 }
+
 async function apiAuth(path, payload) {
   const response = await fetch(new URL(`api/${path}`, document.baseURI).toString(), {
     method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
