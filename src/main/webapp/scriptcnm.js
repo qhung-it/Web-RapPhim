@@ -5,7 +5,7 @@ const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const img = (id, w = 600) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=${w}&q=80`;
 
-const MOVIES = [
+let MOVIES = [
   { id: 'ds', t: 'Demon Slayer', sub: 'Kimetsu no Yaiba: Chuyến Tàu Vô Tận', p: 'photo-1534447677768-be436bb09401', bd: 'photo-1536440136628-849c177e76a1', age: 'T16', r: 8.9, d: '2h 10m', g: 'Anime · Hành động', dir: 'Haruo Sotozaki', cast: 'Natsuki Hanae, Akari Kitō', fm: ['IMAX', '2D'], st: 'now', desc: 'Tanjirou và các đồng đội lên Chuyến tàu Vô Tận để điều tra vụ hơn 40 người mất tích bí ẩn.' },
   { id: 'dn', t: 'Dune: Hành Tinh Cát II', sub: 'Cuộc chiến giành Arrakis', p: 'photo-1518709268805-4e9042af9f23', bd: 'photo-1518709268805-4e9042af9f23', age: 'T13', r: 8.7, d: '2h 45m', g: 'Khoa học viễn tưởng', dir: 'Denis Villeneuve', cast: 'Timothée Chalamet, Zendaya', fm: ['IMAX', '3D'], st: 'now', desc: 'Paul Atreides hợp lực cùng người Fremen để trả thù những kẻ đã hủy hoại gia tộc mình.' },
   { id: 'kf', t: 'Kung Fu Panda 4', sub: 'Gấu Po trở lại', p: 'photo-1509198397868-475647b2a1e5', bd: 'photo-1509198397868-475647b2a1e5', age: 'P', r: 9.1, d: '1h 55m', g: 'Hoạt hình · Hài hước', dir: 'Mike Mitchell', cast: 'Jack Black, Awkwafina', fm: ['2D', '4DX'], st: 'now', desc: 'Po phải chọn người kế vị Chiến binh Rồng khi một phù thủy biến hình xuất hiện.' },
@@ -13,7 +13,8 @@ const MOVIES = [
   { id: 'mi', t: 'Mai', sub: 'Phim tâm lý tình cảm Việt', p: 'photo-1489599849927-2ee91cede3ba', bd: 'photo-1489599849927-2ee91cede3ba', age: 'T18', r: 8.2, d: '2h 11m', g: 'Tâm lý · Tình cảm', dir: 'Trấn Thành', cast: 'Phương Anh Đào, Tuấn Trần', fm: ['2D'], st: 'now', desc: 'Câu chuyện về người phụ nữ tên Mai và cơ hội thứ hai trong tình yêu.' },
   { id: 'gk', t: 'Godzilla x Kong', sub: 'Đế chế mới', p: 'photo-1478720568477-152d9b164e26', bd: 'photo-1478720568477-152d9b164e26', age: 'T13', r: 8.0, d: '1h 55m', g: 'Hành động · Quái vật', dir: 'Adam Wingard', cast: 'Rebecca Hall, Dan Stevens', fm: ['4DX', '3D'], st: 'soon', desc: 'Hai người khổng lồ phải liên minh trước một mối đe dọa ẩn sâu dưới lòng đất.' }
 ];
-const CINEMAS = [
+let LIVE_SHOWS = [];
+let CINEMAS = [
   { id: 'v', n: 'Vincom Center Q1', a: '72 Lê Thánh Tôn, Quận 1', rooms: 8, fm: ['IMAX', '2D', '3D'], room: 'Phòng IMAX Laser' },
   { id: 'l', n: 'Landmark 81', a: '720A Điện Biên Phủ, Bình Thạnh', rooms: 6, fm: ['4DX', '2D'], room: 'Phòng 4DX' },
   { id: 'a', n: 'Aeon Tân Phú', a: '30 Bờ Bao Tân Thắng, Tân Phú', rooms: 7, fm: ['2D', '3D'], room: 'Phòng 3D' }
@@ -31,23 +32,25 @@ const PROMOS = {
 const PRICE = { standard: 120000, vip: 150000, couple: 280000 };
 const TYPE_NAME = { standard: 'Thường', vip: 'VIP', couple: 'Ghế đôi' };
 const ROWS = ['A', 'B', 'C', 'D', 'E', 'F'];
-const rowType = r => r === 'F' ? 'couple' : 'CD'.includes(r) ? 'vip' : 'standard';
+const rowType = r => DB.seatRows?.find(x => x.id === r)?.t || (r === 'F' ? 'couple' : 'CD'.includes(r) ? 'vip' : 'standard');
+const rowCount = r => Number(DB.seatRows?.find(x => x.id === r)?.cnt) || (r === 'F' ? 5 : 10);
 
 const today = new Date();
 const DATES = [0, 1, 2].map(i => { const d = new Date(today); d.setDate(d.getDate() + i); const dd = String(d.getDate()).padStart(2, '0'), mm = String(d.getMonth() + 1).padStart(2, '0'); return { k: `${dd}/${mm}`, l: (i ? ['', 'Ngày mai', 'Ngày kia'][i] : 'Hôm nay') + ` ${dd}/${mm}` }; });
 
 const S = {
   show: { m: MOVIES[0], date: DATES[0].k, cin: CINEMAS[0], time: '19:30' },
-  sel: [], combos: { duo: 0, solo: 0 }, promo: null, step: 1, ticker: 0, raf: 0,
+  sel: [], combos: Object.fromEntries(COMBOS.map(c => [c.id, 0])), promo: null, step: 1, ticker: 0, raf: 0,
   booked: {}, hold: { t: null, left: 600 },
   stDate: DATES[0].k, stCin: 'all', filter: 'all', q: '',
-  pos: { show: null, sel: [], combos: { duo: 0, solo: 0 }, promo: '' }
+  pos: { show: null, sel: [], combos: Object.fromEntries(COMBOS.map(c => [c.id, 0])), promo: '' },
+  apiSeatData: null, seatLoadToken: 0
 };
 const showKey = s => `${s.m.id}|${s.date}|${s.cin.id}|${s.time}`;
 function soldFor(s) {
   const key = showKey(s); let h = 0; for (const ch of key) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
   const set = new Set(S.booked[key] || []);
-  for (let i = 0; i < 9; i++) { h = (h * 1103515245 + 12345) >>> 0; const r = ROWS[h % 6], max = r === 'F' ? 5 : 10; set.add(r + (1 + (h >> 8) % max)); }
+  for (let i = 0; i < 9; i++) { h = (h * 1103515245 + 12345) >>> 0; const r = ROWS[h % ROWS.length], max = rowCount(r); set.add(r + (1 + (h >> 8) % max)); }
   return set;
 }
 function totals(sel, combos, promo) {
@@ -60,180 +63,118 @@ function toast(msg) {
   const t = $('#toast'); t.textContent = msg; t.classList.add('show');
   clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 2600);
 }
-const poster = m => `<img src="${img(m.p)}" alt="${m.t}" loading="lazy" onerror="this.classList.add('img-fail')">`;
+const poster = m => {
+  const value = String(m.posterUrl || '').trim();
+  const src = value && (/^https?:\/\//i.test(value) || value.startsWith('/')) ? value : img(m.p);
+  return `<img src="${src}" alt="${m.t}" loading="lazy" onerror="this.classList.add('img-fail')">`;
+};
 
 /* ================= KHỞI TẠO ================= */
-document.addEventListener('DOMContentLoaded', () => {
-  initLogin();
-  initAccountInfo();
-  initMyTickets();
-  initBookingHistory();
-  initMyPromotions();
-  initFavoriteMovies();
-  initNotifications();
-  initSettings();
-  initHelp();
-  initRoles();
-  initNav();
-  initHero();
-  initMovies();
-  initLoginMovieBackground();
-  initShowtimes();
-  initStatic();
-  initModal();
-  initDetail();
-  initPOS();
-  initAdmin();
+document.addEventListener('DOMContentLoaded', async () => {
+  // Ưu tiên dữ liệu thật từ API; nếu backend/DB chưa sẵn sàng thì giữ giao diện mẫu,
+  // nhưng thao tác thanh toán vẫn bắt buộc phải khớp suất/ghế tồn tại trong database.
+  await loadPublicCatalog();
+  initRoles(); initNav(); initHero(); initMovies(); initShowtimes(); initStatic();
+  initModal(); initDetail(); initPOS(); initAdmin();
 });
 
-function initLogin() {
-  const form = $('#login-form'), email = $('#login-email'), password = $('#login-password'), message = $('#login-message'), togglePassword = $('#toggle-password');
-  const loginView = $('#view-login'), customerView = $('#view-customer');
-  const userAvatar = $('#user-avatar'), userMenu = $('#user-menu'), userAccount = $('#user-account'), logoutButton = $('#logout');
-  const loginPanel = $('#auth-login'), registerPanel = $('#auth-register'), forgotPanel = $('#auth-forgot');
-  const registerForm = $('#register-form'), forgotForm = $('#forgot-form');
-
-  const showAuthPanel = panel => {
-    [loginPanel, registerPanel, forgotPanel].forEach(x => x?.classList.remove('active'));
-    panel?.classList.add('active');
-    $('#register-message') && ($('#register-message').textContent = '');
-    $('#forgot-message') && ($('#forgot-message').textContent = '');
-    $('#forgot-reset-message') && ($('#forgot-reset-message').textContent = '');
-    window.scrollTo(0, 0);
-  };
-
-  const bindPasswordToggle = (button, input) => {
-    if (!button || !input) return;
-    button.onclick = () => {
-      const show = input.type === 'password';
-      input.type = show ? 'text' : 'password';
-      button.textContent = show ? '🙈' : '👁';
-      button.setAttribute('aria-label', show ? 'Ẩn mật khẩu' : 'Hiện mật khẩu');
-    };
-  };
-
-  if (userAvatar && userMenu) userAvatar.onclick = e => {
-    e.stopPropagation();
-    userMenu.classList.toggle('active');
-  };
-
-  if (userAccount) userAccount.onclick = e => e.stopPropagation();
-
-  document.addEventListener('click', e => {
-    if (userAccount && !userAccount.contains(e.target)) userMenu?.classList.remove('active');
-  });
-
-  if (logoutButton) logoutButton.onclick = e => {
-    e.preventDefault();
-    userMenu?.classList.remove('active');
-    loginView.classList.add('active');
-    customerView.classList.remove('active');
-    showAuthPanel(loginPanel);
-  };
-
-  bindPasswordToggle(togglePassword, password);
-  bindPasswordToggle($('#toggle-register-password'), $('#register-password'));
-  bindPasswordToggle($('#toggle-register-confirm'), $('#register-confirm'));
-  bindPasswordToggle($('#toggle-forgot-password'), $('#forgot-new-password'));
-  bindPasswordToggle($('#toggle-forgot-confirm'), $('#forgot-confirm'));
-
-  if (form) form.onsubmit = e => {
-    e.preventDefault();
-    message.textContent = '';
-    const emailValue = email.value.trim(), passwordValue = password.value.trim();
-
-    if (!emailValue || !passwordValue) return message.textContent = 'Vui lòng nhập đầy đủ email và mật khẩu.';
-    if (!email.validity.valid) return message.textContent = 'Email không đúng định dạng.';
-
-    loginView.classList.remove('active');
-    customerView.classList.add('active');
-    window.scrollTo(0, 0);
-  };
-
-
-  $('#forgot-password').onclick = e => {
-    e.preventDefault();
-    $('#forgot-email').value = email.value.trim();
-    $('#forgot-step-reset').classList.remove('active');
-    $('#forgot-step-email').classList.add('active');
-    $('#forgot-description').textContent = 'Nhập email đã đăng ký để nhận mã xác thực.';
-    showAuthPanel(forgotPanel);
-  };
-
-  $('#go-register').onclick = e => {
-    e.preventDefault();
-    showAuthPanel(registerPanel);
-  };
-
-  $('#back-to-login-register').onclick = () => showAuthPanel(loginPanel);
-  $('#back-to-login-forgot').onclick = () => showAuthPanel(loginPanel);
-
-  if (registerForm) registerForm.onsubmit = e => {
-    e.preventDefault();
-
-    const name = $('#register-name').value.trim(), phone = $('#register-phone').value.trim();
-    const regEmail = $('#register-email'), regPassword = $('#register-password').value;
-    const confirm = $('#register-confirm').value, terms = $('#register-terms').checked;
-    const msg = $('#register-message');
-
-    msg.style.color = '';
-    msg.textContent = '';
-
-    if (!name || !phone || !regEmail.value.trim() || !regPassword || !confirm)
-      return msg.textContent = 'Vui lòng nhập đầy đủ thông tin.';
-
-    if (!regEmail.validity.valid) return msg.textContent = 'Email không đúng định dạng.';
-    if (regPassword.length < 6) return msg.textContent = 'Mật khẩu phải có ít nhất 6 ký tự.';
-    if (regPassword !== confirm) return msg.textContent = 'Mật khẩu xác nhận không khớp.';
-    if (!terms) return msg.textContent = 'Vui lòng đồng ý với điều khoản sử dụng.';
-
-    msg.style.color = '#7ee787';
-    msg.textContent = 'Đăng ký thành công (giao diện demo). Bạn có thể đăng nhập ngay.';
-
-    setTimeout(() => {
-      showAuthPanel(loginPanel);
-      email.value = regEmail.value.trim();
-    }, 900);
-  };
-
-  if (forgotForm) forgotForm.onsubmit = e => {
-    e.preventDefault();
-
-    const forgotEmail = $('#forgot-email'), msg = $('#forgot-message');
-    msg.style.color = '';
-    msg.textContent = '';
-
-    if (!forgotEmail.value.trim()) return msg.textContent = 'Vui lòng nhập email.';
-    if (!forgotEmail.validity.valid) return msg.textContent = 'Email không đúng định dạng.';
-
-    $('#forgot-step-email').classList.remove('active');
-    $('#forgot-step-reset').classList.add('active');
-    $('#forgot-description').textContent = 'Nhập mã xác thực và mật khẩu mới của bạn.';
-  };
-
-  $('#reset-password-submit').onclick = () => {
-    const otp = $('#forgot-otp').value.trim();
-    const newPassword = $('#forgot-new-password').value;
-    const confirm = $('#forgot-confirm').value;
-    const msg = $('#forgot-reset-message');
-
-    msg.style.color = '';
-    msg.textContent = '';
-
-    if (!/^\d{6}$/.test(otp)) return msg.textContent = 'Vui lòng nhập mã xác thực gồm 6 chữ số.';
-    if (newPassword.length < 6) return msg.textContent = 'Mật khẩu mới phải có ít nhất 6 ký tự.';
-    if (newPassword !== confirm) return msg.textContent = 'Mật khẩu xác nhận không khớp.';
-
-    msg.style.color = '#7ee787';
-    msg.textContent = 'Đặt lại mật khẩu thành công (giao diện demo).';
-
-    setTimeout(() => {
-      $('#forgot-step-reset').classList.remove('active');
-      $('#forgot-step-email').classList.add('active');
-      $('#forgot-description').textContent = 'Nhập email đã đăng ký để nhận mã xác thực.';
-      showAuthPanel(loginPanel);
-    }, 900);
-  };
+async function loadPublicCatalog() {
+  const fallbackMovies = MOVIES.slice();
+  const fallbackCinemas = CINEMAS.slice();
+  try {
+    const [movieRows, cinemaRows, showRows] = await Promise.all([API.get('movies'), API.get('cinemas'), API.get('shows')]);
+    LIVE_SHOWS = Array.isArray(showRows) ? showRows : [];
+    if (Array.isArray(movieRows) && movieRows.length) {
+      MOVIES = movieRows.map((row, index) => {
+        const title = String(row.tenPhim || '').trim();
+        const existing = fallbackMovies.find(m => norm(m.t) === norm(title)) || fallbackMovies[index % fallbackMovies.length];
+        const status = norm(String(row.trangThai || ''));
+        const posterValue = String(row.poster || '').trim();
+        return {
+          ...existing,
+          id: String(row.maPhim || existing.id),
+          t: title || existing.t,
+          sub: row.theLoai || existing.sub,
+          g: row.theLoai || existing.g,
+          d: row.thoiLuong ? `${row.thoiLuong} phút` : existing.d,
+          age: row.doTuoi ? (/^T/i.test(String(row.doTuoi)) ? String(row.doTuoi) : `T${row.doTuoi}`) : existing.age,
+          desc: row.moTa || existing.desc,
+          p: existing.p,
+          posterUrl: posterValue,
+          st: /sap|soon|coming/.test(status) ? 'soon' : /ngung|off|inactive/.test(status) ? 'off' : 'now'
+        };
+      });
+    }
+    if (Array.isArray(cinemaRows) && cinemaRows.length) {
+      CINEMAS = cinemaRows.map((row, index) => {
+        const existing = fallbackCinemas[index % fallbackCinemas.length];
+        return {
+          ...existing,
+          id: String(row.maRap || existing.id),
+          n: String(row.tenRap || existing.n),
+          a: String(row.diaChi || existing.a),
+          rooms: existing.rooms,
+          fm: existing.fm,
+          room: existing.room
+        };
+      });
+    }
+    // Đồng bộ lựa chọn mặc định với danh mục mới.
+    const firstMovie = MOVIES.find(m => m.st === 'now') || MOVIES[0];
+    if (firstMovie) S.show.m = firstMovie;
+    if (CINEMAS.length) S.show.cin = CINEMAS[0];
+  } catch (error) {
+    console.warn('Không tải được danh mục API; tiếp tục hiển thị giao diện mẫu:', error.message);
+  }
+  // Tải combo và khuyến mãi độc lập để một API lỗi không làm mất các danh mục còn lại.
+  try {
+    const [comboResult, promoResult] = await Promise.allSettled([API.get('combos'), API.get('promotions')]);
+    if (comboResult.status === 'fulfilled' && Array.isArray(comboResult.value) && comboResult.value.length) {
+      const apiCombos = comboResult.value;
+      const nextCombos = apiCombos.map((row, index) => {
+        const existing = COMBOS.find(c => norm(c.n) === norm(String(row.tenCombo || '')))
+          || COMBOS[index % Math.max(1, COMBOS.length)] || {};
+        return {
+          ...existing,
+          id: String(row.maCombo || existing.id || `combo-${index}`),
+          maCombo: String(row.maCombo || ''),
+          n: String(row.tenCombo || existing.n || 'Combo'),
+          d: String(row.moTa || existing.d || ''),
+          p: Number(row.gia) || 0,
+          i: existing.i || 'photo-1578849278619-e73505e9610f'
+        };
+      });
+      COMBOS.splice(0, COMBOS.length, ...nextCombos);
+      S.combos = Object.fromEntries(nextCombos.map(c => [c.id, 0]));
+      S.pos.combos = Object.fromEntries(nextCombos.map(c => [c.id, 0]));
+    }
+    if (promoResult.status === 'fulfilled' && Array.isArray(promoResult.value)) {
+      const localNow = new Date();
+      const now = `${localNow.getFullYear()}-${String(localNow.getMonth() + 1).padStart(2, '0')}-${String(localNow.getDate()).padStart(2, '0')}`;
+      const livePromos = promoResult.value.filter(p => {
+        const status = norm(String(p.trangThai || ''));
+        const start = String(p.ngayBatDau || '').slice(0, 10);
+        const end = String(p.ngayKetThuc || '').slice(0, 10);
+        return (!status || status === 'danghoatdong' || status === 'dang hoat dong')
+          && (!start || start <= now) && (!end || end >= now)
+          && Number(p.phanTramGiam) > 0;
+      });
+      for (const key of Object.keys(PROMOS)) delete PROMOS[key];
+      livePromos.forEach(p => {
+        const code = String(p.maKM || '').trim().toUpperCase();
+        if (!code) return;
+        const percent = Math.min(100, Math.max(0, Number(p.phanTramGiam) || 0));
+        PROMOS[code] = {
+          maKM: String(p.maKM),
+          t: String(p.moTa || p.tenKM || `Giảm ${percent}% toàn đơn`),
+          c: (seat, combo) => Math.round((seat + combo) * percent / 100)
+        };
+      });
+      if (S.promo && !PROMOS[S.promo]) S.promo = null;
+    }
+  } catch (error) {
+    console.warn('Không tải được combo/khuyến mãi từ API:', error.message);
+  }
 }
 
 function initRoles() {
@@ -267,7 +208,7 @@ function initHero() {
   $('#hero-dots').onclick = e => { const d = e.target.closest('.dot'); if (d) { showHero(+d.dataset.i); startHero(); } };
   $('#hero-book').onclick = () => openDetail(heroList[heroIdx], true);
   $('#hero-detail').onclick = () => openDetail(heroList[heroIdx]);
-  $('#hero-trailer').onclick = () => toast('Trailer sẽ được cập nhật sớm');
+  $('#hero-trailer').onclick = () => playTrailer(heroList[heroIdx]);
   $('#hero-backdrop').style.backgroundImage = `url('${img(heroList[0].bd, 1920)}')`;
   fillHero(0); startHero();
 }
@@ -307,37 +248,13 @@ function initMovies() {
       <div class="poster-info"><div class="meta-line"><span class="rating">★ ${m.r}</span><span>${m.d}</span><span>${m.fm.join(' / ')}</span></div>
         <h3 class="movie-name">${m.t}</h3><p class="genre">${m.g}</p></div>
     </article>`).join('');
-  grid.onclick = e => { const c = e.target.closest('.cinema-poster-card'); if (!c) return; const m = MOVIES.find(x => x.id === c.dataset.id), a = e.target.closest('[data-act]')?.dataset.act; if (a === 'trailer') return toast('Trailer sẽ được cập nhật sớm'); openDetail(m, a === 'book'); };
+  grid.onclick = e => { const c = e.target.closest('.cinema-poster-card'); if (!c) return; const m = MOVIES.find(x => x.id === c.dataset.id), a = e.target.closest('[data-act]')?.dataset.act; if (a === 'trailer') return playTrailer(m); openDetail(m, a === 'book'); };
   grid.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { const c = e.target.closest('.cinema-poster-card'); if (c) { e.preventDefault(); openDetail(MOVIES.find(x => x.id === c.dataset.id)); } } };
   $('#filters').onclick = e => { const p = e.target.closest('.pill'); if (!p) return; S.filter = p.dataset.f; $$('#filters .pill').forEach(x => x.classList.toggle('active', x === p)); applyFilter(); };
   $('#search').oninput = e => { S.q = e.target.value; applyFilter(); if (S.q) $('#movies').scrollIntoView({ behavior: 'smooth' }); };
   $('#clear-search').onclick = () => { $('#search').value = ''; S.q = ''; S.filter = 'all'; $$('#filters .pill').forEach(x => x.classList.toggle('active', x.dataset.f === 'all')); applyFilter(); };
   applyFilter();
 }
-
-function initLoginMovieBackground() {
-  const bg = $('#login-movie-bg');
-  if (!bg || !MOVIES?.length) return;
-
-  const posters = MOVIES.filter(m => m.p).map(m => img(m.p));
-  bg.innerHTML = '';
-
-  for (let r = 0; r < 5; r++) {
-    const row = document.createElement('div');
-    row.className = `login-movie-row ${r % 2 ? 'reverse' : ''}`;
-
-    [...posters, ...posters, ...posters].forEach(src => {
-      const image = document.createElement('img');
-      image.className = 'login-movie';
-      image.src = src;
-      image.alt = '';
-      row.appendChild(image);
-    });
-
-    bg.appendChild(row);
-  }
-}
-
 function pickMovie(id) {
   const m = MOVIES.find(x => x.id === id);
   if (m.st === 'soon') return toast(`${m.t} chưa mở bán vé`);
@@ -367,12 +284,47 @@ function initShowtimes() {
   $('#st-cinemas').onclick = e => { const p = e.target.closest('.pill'); if (!p) return; S.stCin = p.dataset.c; $$('#st-cinemas .pill').forEach(x => x.classList.toggle('active', x === p)); renderShowtimes(); };
   $('#st-list').onclick = e => {
     const b = e.target.closest('.time-chip'); if (!b || b.disabled) return;
+    if (b.dataset.show) {
+      const show = LIVE_SHOWS.find(x => String(x.maSuat) === b.dataset.show);
+      if (!show) return toast('Suất chiếu không còn trong dữ liệu. Vui lòng tải lại trang.');
+      const movie = MOVIES.find(m => String(m.id) === String(show.maPhim)) || MOVIES.find(m => norm(m.t) === norm(show.tenPhim));
+      const cin = CINEMAS.find(c => String(c.id) === String(show.maRap)) || CINEMAS[0];
+      if (!movie || !cin) return toast('Không ánh xạ được phim hoặc rạp của suất chiếu này.');
+      openBooking(movie, { cin, time: String(show.gioBatDau || '').slice(0, 5), date: S.stDate, apiShow: show });
+      return;
+    }
     openBooking(MOVIES.find(m => m.id === b.dataset.m), { cin: CINEMAS.find(c => c.id === b.dataset.c), time: b.dataset.t, date: S.stDate });
   };
   renderShowtimes();
 }
 function renderShowtimes() {
   const now = new Date(), isToday = S.stDate === DATES[0].k, nowStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  if (LIVE_SHOWS.length) {
+    const wantedDate = DATES.find(d => d.k === S.stDate);
+    const dateToken = wantedDate ? wantedDate.k : S.stDate;
+    const rows = LIVE_SHOWS.filter(show => {
+      const movie = MOVIES.find(m => String(m.id) === String(show.maPhim)) || MOVIES.find(m => norm(m.t) === norm(show.tenPhim));
+      const cin = CINEMAS.find(c => String(c.id) === String(show.maRap));
+      const dateValue = String(show.ngayChieu || '').slice(0, 10);
+      const dateDisplay = dateValue ? `${dateValue.slice(8,10)}/${dateValue.slice(5,7)}` : '';
+      const status = norm(String(show.trangThai || ''));
+      const time = String(show.gioBatDau || '').slice(0, 5);
+      return movie && movie.st === 'now' && cin && dateDisplay === dateToken &&
+        (S.stCin === 'all' || String(cin.id) === String(S.stCin)) &&
+        !/huy|cancel|ngung|off/.test(status) && !(isToday && time < nowStr);
+    });
+    const byMovie = new Map();
+    rows.forEach(show => {
+      const movie = MOVIES.find(m => String(m.id) === String(show.maPhim)) || MOVIES.find(m => norm(m.t) === norm(show.tenPhim));
+      const cin = CINEMAS.find(c => String(c.id) === String(show.maRap));
+      if (!byMovie.has(movie.id)) byMovie.set(movie.id, { movie, cinemas: new Map() });
+      const group = byMovie.get(movie.id);
+      if (!group.cinemas.has(cin.id)) group.cinemas.set(cin.id, { cinema: cin, shows: [] });
+      group.cinemas.get(cin.id).shows.push(show);
+    });
+    $('#st-list').innerHTML = [...byMovie.values()].map(group => `<div class="st-row"><div class="st-movie">${poster(group.movie)}<div><h3>${group.movie.t}</h3><p>${group.movie.d} · ${group.movie.fm.join(' / ')} · ${group.movie.age}</p></div></div><div class="st-cins">${[...group.cinemas.values()].map(item => `<div class="st-cin"><span class="st-cin-name">${item.cinema.n}</span><div class="st-times">${item.shows.sort((a,b) => String(a.gioBatDau).localeCompare(String(b.gioBatDau))).map(show => `<button class="time-chip" data-show="${String(show.maSuat)}">${String(show.gioBatDau || '').slice(0,5)}</button>`).join('')}</div></div>`).join('')}</div></div>`).join('') || '<p class="muted">Không có suất chiếu từ database cho ngày/rạp đã chọn.</p>';
+    return;
+  }
   const cins = CINEMAS.filter(c => S.stCin === 'all' || c.id === S.stCin);
   $('#st-list').innerHTML = MOVIES.filter(m => m.st === 'now').map(m => {
     const rows = cins.filter(c => c.fm.some(f => m.fm.includes(f))).map(c => {
@@ -389,21 +341,57 @@ function initStatic() {
   $('#promo-grid').onclick = e => { const b = e.target.closest('.promo-card'); if (!b) return; navigator.clipboard?.writeText(b.dataset.code).catch(() => {}); toast(`Đã sao chép mã ${b.dataset.code}`); };
 }
 
-function drawSeats(el, sold, selected, onToggle) {
-  el.innerHTML = ROWS.map(r => {
-    const t = rowType(r), n = t === 'couple' ? 5 : 10; let h = '';
-    for (let i = 1; i <= n; i++) {
-      const id = r + i, isSold = sold.has(id), isSel = selected.some(s => s.id === id);
-      h += `<button type="button" class="seat-node ${t}${isSold ? ' sold' : ''}${isSel ? ' selected' : ''}${i === n / 2 | 0 && t !== 'couple' && i === 5 ? ' aisle' : ''}${t === 'couple' && i === 3 ? ' aisle' : ''}" data-id="${id}" data-t="${t}" data-tip="${id} · ${TYPE_NAME[t]} · ${fmt(PRICE[t])}" aria-label="Ghế ${id}, ${TYPE_NAME[t]}, ${fmt(PRICE[t])}${isSold ? ', đã bán' : ''}" aria-pressed="${isSel}" ${isSold ? 'disabled' : ''}>${t === 'couple' ? '<b>♥</b>' : ''}</button>`;
+function drawSeats(el, sold, selected, onToggle, liveData = null) {
+  if (liveData) {
+    const available = Array.isArray(liveData.available) ? liveData.available : [];
+    const soldRows = Array.isArray(liveData.sold) ? liveData.sold : [];
+    const all = [...available.map(seat => ({ ...seat, _sold: false })), ...soldRows.map(seat => ({ ...seat, _sold: true }))];
+    if (!all.length) {
+      el.innerHTML = '<p class="muted seat-empty">Không có dữ liệu ghế cho suất chiếu này. Vui lòng thử suất khác.</p>';
+      return;
     }
-    return `<div class="seat-row"><span class="row-label">${r}</span>${h}<span class="row-label">${r}</span></div>`;
-  }).join('');
+    const groups = new Map();
+    all.forEach(seat => {
+      const label = String(seat.hangGhe || seat.soGhe || '').trim().match(/^[A-Za-z]+/)?.[0] || 'Ghế';
+      if (!groups.has(label)) groups.set(label, []);
+      groups.get(label).push(seat);
+    });
+    const typeOf = seat => {
+      const raw = String(seat.loaiGhe || '').toLowerCase();
+      if (raw.includes('đôi') || raw.includes('doi') || raw.includes('couple')) return 'couple';
+      if (raw.includes('vip')) return 'vip';
+      return 'standard';
+    };
+    el.innerHTML = [...groups.entries()].sort((a,b) => a[0].localeCompare(b[0], 'vi', { numeric: true })).map(([row, seats]) => {
+      const buttons = seats.sort((a,b) => String(a.soGhe || '').localeCompare(String(b.soGhe || ''), 'vi', { numeric: true })).map(seat => {
+        const id = String(seat.soGhe || seat.maGhe || '').trim();
+        const t = typeOf(seat), isSold = seat._sold || soldRows.some(x => String(x.maGhe) === String(seat.maGhe));
+        const isSel = selected.some(x => String(x.id) === id);
+        const price = Number(seat.gia) > 0 ? Number(seat.gia) : (Number(S.show?.apiShow?.giaSuat) > 0 ? Number(S.show.apiShow.giaSuat) : PRICE[t]);
+        return `<button type="button" class="seat-node ${t}${isSold ? ' sold' : ''}${isSel ? ' selected' : ''}" data-id="${id.replace(/&/g,'&amp;').replace(/"/g,'&quot;')}" data-ghe="${String(seat.maGhe || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;')}" data-price="${price}" data-t="${t}" data-tip="${id} · ${TYPE_NAME[t]} · ${fmt(price)}" aria-label="Ghế ${id}, ${TYPE_NAME[t]}, ${fmt(price)}${isSold ? ', đã bán' : ''}" aria-pressed="${isSel}" ${isSold ? 'disabled' : ''}>${t === 'couple' ? '<b>♥</b>' : id.replace(row, '')}</button>`;
+      }).join('');
+      return `<div class="seat-row"><span class="row-label">${row}</span>${buttons}<span class="row-label">${row}</span></div>`;
+    }).join('');
+  } else {
+    el.innerHTML = ROWS.map(r => {
+      const t = rowType(r), n = rowCount(r); let h = '';
+      for (let i = 1; i <= n; i++) {
+        const id = r + i, isSold = sold.has(id), isSel = selected.some(s => s.id === id);
+        h += `<button type="button" class="seat-node ${t}${isSold ? ' sold' : ''}${isSel ? ' selected' : ''}${i === n / 2 | 0 && t !== 'couple' && i === 5 ? ' aisle' : ''}${t === 'couple' && i === 3 ? ' aisle' : ''}" data-id="${id}" data-t="${t}" data-price="${PRICE[t]}" data-tip="${id} · ${TYPE_NAME[t]} · ${fmt(PRICE[t])}" aria-label="Ghế ${id}, ${TYPE_NAME[t]}, ${fmt(PRICE[t])}${isSold ? ', đã bán' : ''}" aria-pressed="${isSel}" ${isSold ? 'disabled' : ''}>${t === 'couple' ? '<b>♥</b>' : ''}</button>`;
+      }
+      return `<div class="seat-row"><span class="row-label">${r}</span>${h}<span class="row-label">${r}</span></div>`;
+    }).join('');
+  }
   el.onclick = e => {
     const b = e.target.closest('.seat-node'); if (!b || b.disabled) return;
     const id = b.dataset.id, i = selected.findIndex(s => s.id === id);
-    if (i > -1) { selected.splice(i, 1); b.classList.add('release'); setTimeout(() => b.classList.remove('release'), 450); }
-    else { if (selected.length >= 8) return toast('Tối đa 8 ghế mỗi đơn'); selected.push({ id, price: PRICE[b.dataset.t], t: b.dataset.t }); }
+    if (i > -1) { selected.splice(i, 1); b.classList.add('release'); }
+    else {
+      if (selected.length >= 8) return toast('Tối đa 8 ghế mỗi đơn');
+      selected.push({ id, maGhe: b.dataset.ghe || null, price: Number(b.dataset.price) || PRICE[b.dataset.t] || PRICE.standard, t: b.dataset.t });
+    }
     b.classList.toggle('selected', i === -1); b.setAttribute('aria-pressed', i === -1);
+    if (i > -1) setTimeout(() => b.classList.remove('release'), 450);
     if (i === -1) { b.classList.remove('pulse'); void b.offsetWidth; b.classList.add('pulse'); }
     onToggle();
   };
@@ -425,15 +413,34 @@ function initModal() {
 }
 function openBooking(movie, o = {}) {
   const key0 = showKey(S.show);
-  const next = { m: movie, date: o.date || S.stDate, cin: o.cin || CINEMAS.find(c => c.fm.some(f => movie.fm.includes(f))) || CINEMAS[0], time: o.time || '19:30' };
+  const next = { m: movie, date: o.date || S.stDate, cin: o.cin || CINEMAS.find(c => c.fm.some(f => movie.fm.includes(f))) || CINEMAS[0], time: o.time || '19:30', apiShow: o.apiShow || null };
   if (showKey(next) !== key0 || !S.sel.length) { S.sel = []; stopHold(); }
   S.show = next; S.step = 1;
   $('#pay-form').hidden = false; $('#pay-processing').hidden = true; $('#pay-success').hidden = true; $('#pay-success').innerHTML = '';
   $('#sum-poster').src = img(movie.p, 200); $('#sum-title').textContent = movie.t;
   $('#sum-info').textContent = `${next.cin.n} · ${next.cin.room}`; $('#sum-time').textContent = `${next.time} · ${next.date}`;
   $('#screen-name').textContent = 'MÀN HÌNH ' + next.cin.room.replace('Phòng ', '').toUpperCase();
-  drawSeats($('#seat-matrix'), soldFor(next), S.sel, update);
+  const loadToken = ++S.seatLoadToken;
+  S.apiSeatData = null;
   $('#booking-modal').classList.add('active'); document.body.classList.add('modal-open');
+  if (next.apiShow) {
+    $('#seat-matrix').innerHTML = '<p class="muted seat-empty">Đang tải sơ đồ ghế từ hệ thống…</p>';
+    RapPhimAPI.seatsForShow(next.apiShow.maSuat).then(data => {
+      if (loadToken !== S.seatLoadToken || S.show !== next) return;
+      S.apiSeatData = data && typeof data === 'object' ? data : { available: [], sold: [] };
+      // Bỏ lựa chọn cũ không còn thuộc sơ đồ ghế của suất hiện tại.
+      const all = [...(S.apiSeatData.available || []), ...(S.apiSeatData.sold || [])];
+      S.sel = S.sel.filter(sel => all.some(seat => String(seat.soGhe) === String(sel.id)) && !(S.apiSeatData.sold || []).some(seat => String(seat.soGhe) === String(sel.id)));
+      drawSeats($('#seat-matrix'), new Set(), S.sel, update, S.apiSeatData); update();
+    }).catch(error => {
+      if (loadToken !== S.seatLoadToken || S.show !== next) return;
+      S.apiSeatData = { available: [], sold: [] };
+      $('#seat-matrix').innerHTML = `<p class="muted seat-empty">Không tải được sơ đồ ghế: ${String(error.message || error).replace(/</g, '&lt;')}</p>`;
+      toast('Không tải được ghế từ hệ thống. Vui lòng thử lại.');
+    });
+  } else {
+    drawSeats($('#seat-matrix'), soldFor(next), S.sel, update);
+  }
   setStep(1, true); update();
 }
 function closeModal() { $('#booking-modal').classList.remove('active'); if ($('#detail').hidden) document.body.classList.remove('modal-open'); }
@@ -487,8 +494,8 @@ function paintHold() {
   h.classList.toggle('warn', l <= 120 && l > 30); h.classList.toggle('danger', l <= 30);
 }
 function expireHold() {
-  stopHold(); S.sel = []; S.combos = { duo: 0, solo: 0 }; S.promo = null;
-  drawSeats($('#seat-matrix'), soldFor(S.show), S.sel, update); setStep(1); update();
+  stopHold(); S.sel = []; S.combos = Object.fromEntries(COMBOS.map(c => [c.id, 0])); S.promo = null;
+  drawSeats($('#seat-matrix'), soldFor(S.show), S.sel, update, S.apiSeatData); setStep(1); update();
   toast('Hết thời gian giữ ghế. Vui lòng chọn lại');
 }
 
@@ -525,25 +532,79 @@ function renderReview() {
   const t = totals(S.sel, S.combos, S.promo), cb = COMBOS.filter(c => S.combos[c.id]).map(c => `${S.combos[c.id]} × ${c.n}`).join(', ') || 'Không';
   $('#review').innerHTML = `<div><span>Phim</span><b>${S.show.m.t}</b></div><div><span>Suất chiếu</span><b>${S.show.time} · ${S.show.date} · ${S.show.cin.n}</b></div><div><span>Ghế</span><b>${S.sel.map(s => s.id).join(', ')}</b></div><div><span>Bắp nước</span><b>${cb}</b></div><div><span>Ưu đãi</span><b>${S.promo || 'Không'}</b></div>`;
 }
-function pay() {
-  const method = $('input[name="pay"]:checked').value, t = totals(S.sel, S.combos, S.promo);
+async function pay() {
+  const method = $('input[name="pay"]:checked')?.value || 'Chuyển khoản';
+  const t = totals(S.sel, S.combos, S.promo);
+  if (!S.show || !S.sel.length) return toast('Vui lòng chọn suất chiếu và ít nhất một ghế.');
   $('#pay-form').hidden = true; $('#pay-processing').hidden = false;
   $('#btn-next-step').disabled = true; $('#btn-prev-step').disabled = true; stopHold();
-  setTimeout(() => {
-    const code = 'CNV-' + (8850 + Math.random() * 99 | 0), seats = S.sel.map(s => s.id);
-    (S.booked[showKey(S.show)] ||= []).push(...seats);
-    S.lastTicket = { code, movie: S.show.m.t, cin: S.show.cin.n, time: S.show.time, date: S.show.date, seats: seats.join(', '), total: t.total };
-    addOrder(code, S.show.m.t, S.show.cin.n, S.show.time, seats.join(', '), t.total);
+
+  try {
+    // Ánh xạ lựa chọn giao diện sang mã thật trong database. Không dùng ID demo để ghi đơn.
+    const [shows, combosFromApi] = await Promise.all([API.get('shows'), API.get('combos')]);
+    const norm = value => String(value || '').trim().toLowerCase();
+    const wantedTitle = norm(S.show.m.t);
+    const wantedDate = String(S.show.date || '').slice(0, 10);
+    const wantedTime = String(S.show.time || '').slice(0, 5);
+    const matchingShows = (Array.isArray(shows) ? shows : []).filter(x =>
+      norm(x.tenPhim) === wantedTitle &&
+      String(x.ngayChieu || '').slice(0, 10) === wantedDate &&
+      String(x.gioBatDau || '').slice(0, 5) === wantedTime
+    );
+    const show = S.show.apiShow && (Array.isArray(shows) ? shows : []).some(x => String(x.maSuat) === String(S.show.apiShow.maSuat))
+      ? S.show.apiShow : matchingShows.length === 1 ? matchingShows[0] : null;
+    if (!show) {
+      throw new Error(matchingShows.length > 1
+        ? 'Có nhiều suất chiếu trùng thông tin. Vui lòng chọn lại suất chiếu từ dữ liệu hệ thống.'
+        : 'Không tìm thấy suất chiếu tương ứng trong database. Chọn suất chiếu có sẵn trong danh sách hệ thống.');
+    }
+    const seatResponse = await RapPhimAPI.seatsForShow(show.maSuat);
+    const available = Array.isArray(seatResponse.available) ? seatResponse.available : [];
+    const sold = Array.isArray(seatResponse.sold) ? seatResponse.sold : [];
+    const allSeats = [...available, ...sold];
+    const selectedSeats = S.sel.map(selected => {
+      const match = allSeats.find(seat => norm(seat.soGhe) === norm(selected.id));
+      if (!match) throw new Error(`Không ánh xạ được ghế ${selected.id} sang ghế trong database.`);
+      if (sold.some(seat => seat.maGhe === match.maGhe)) throw new Error(`Ghế ${selected.id} đã được bán. Vui lòng chọn ghế khác.`);
+      return match;
+    });
+    const selectedCombos = [];
+    for (const [uiId, quantity] of Object.entries(S.combos)) {
+      if (!quantity) continue;
+      const uiCombo = COMBOS.find(x => x.id === uiId);
+      const match = (Array.isArray(combosFromApi) ? combosFromApi : []).find(x => String(x.maCombo) === String(uiCombo?.maCombo || uiId)) || (Array.isArray(combosFromApi) ? combosFromApi : []).find(x => norm(x.tenCombo) === norm(uiCombo?.n));
+      if (!match) throw new Error(`Không tìm thấy combo "${uiCombo?.n || uiId}" trong database.`);
+      selectedCombos.push({ maCombo: match.maCombo, soLuong: quantity });
+    }
+    const payMethodMap = { 'Tiền mặt': 'TienMat', 'Chuyển khoản': 'ChuyenKhoan', 'Thẻ': 'The', 'Thẻ ngân hàng': 'The' };
+    const paymentMethod = payMethodMap[method] || 'ChuyenKhoan';
+    const result = await RapPhimAPI.checkout({
+      maSuat: show.maSuat,
+      maGhes: selectedSeats.map(seat => seat.maGhe),
+      combos: selectedCombos,
+      maKM: S.promo ? (PROMOS[S.promo]?.maKM || S.promo) : null,
+      tongTien: t.total,
+      phuongThuc: paymentMethod
+    });
+    const ticketCode = result.order?.maDon || result.payment?.maTT || 'Đã ghi nhận';
+    const serverOrder = result.order || {};
+    const finalTotal = Math.max(0, Number(serverOrder.tongTien || 0) - Number(serverOrder.tienGiam || 0));
+    const seatLabels = selectedSeats.map(seat => seat.soGhe).join(', ');
+    S.lastTicket = { code: ticketCode, movie: S.show.m.t, cin: S.show.cin.n, time: S.show.time, date: S.show.date, seats: seatLabels, total: finalTotal };
     $('#pay-processing').hidden = true;
-    $('#pay-success').innerHTML = `<div class="success-check">✓</div><h3>Đặt vé thành công</h3><p class="muted">Đã thanh toán ${fmt(t.total)} qua ${method}</p>
-      <div class="ticket"><div class="ticket-info"><h4>${S.show.m.t}</h4><dl><dt>Suất</dt><dd>${S.show.time} · ${S.show.date}</dd><dt>Rạp</dt><dd>${S.show.cin.n}</dd><dt>Phòng</dt><dd>${S.show.cin.room}</dd><dt>Ghế</dt><dd>${seats.join(', ')}</dd></dl><p class="ticket-code">Mã vé ${code}</p></div><div class="ticket-qr">${qr(code + seats.join(''))}</div></div>
-      <div class="ticket-actions"><button class="btn-glass" onclick="downloadTicket()">Tải vé</button><button class="btn-primary-gold" id="btn-home">Về trang chủ</button></div>`;
+    $('#pay-success').innerHTML = `<div class="success-check">✓</div><h3>Yêu cầu thanh toán đã được xử lý</h3><p class="muted">Tổng tiền ${fmt(finalTotal)} · ${method}${Number(serverOrder.tienGiam || 0) ? ` · Đã giảm ${fmt(Number(serverOrder.tienGiam))}` : ''}</p>
+      <div class="ticket"><div class="ticket-info"><h4>${S.show.m.t}</h4><dl><dt>Suất</dt><dd>${S.show.time} · ${S.show.date}</dd><dt>Rạp</dt><dd>${S.show.cin.n}</dd><dt>Phòng</dt><dd>${S.show.cin.room}</dd><dt>Ghế</dt><dd>${seatLabels}</dd><dt>Mã đơn</dt><dd>${ticketCode}</dd></dl></div><div class="ticket-qr">${qr(ticketCode + seatLabels)}</div></div>
+      <div class="ticket-actions"><button class="btn-primary-gold" id="btn-home">Về trang chủ</button></div>`;
     $('#pay-success').hidden = false; $('.summary-actions').style.display = 'none';
     $('#btn-home').onclick = finish;
-  }, 1600);
+  } catch (error) {
+    $('#pay-processing').hidden = true; $('#pay-form').hidden = false;
+    $('#btn-next-step').disabled = false; $('#btn-prev-step').disabled = false;
+    toast(error.message || 'Không thể hoàn tất đặt vé. Vui lòng thử lại.');
+  }
 }
 function finish() {
-  S.sel = []; S.combos = { duo: 0, solo: 0 }; S.promo = null; $('#promo-input').value = ''; $('#promo-msg').textContent = '';
+  S.sel = []; S.combos = Object.fromEntries(COMBOS.map(c => [c.id, 0])); S.promo = null; $('#promo-input').value = ''; $('#promo-msg').textContent = '';
   $('.summary-actions').style.display = ''; $('#btn-next-step').disabled = false; $('#btn-prev-step').disabled = false;
   closeModal(); closeDetail(); update(); scrollTo({ top: 0, behavior: 'smooth' }); toast('Vé đã được gửi vào email của bạn');
 }
@@ -562,7 +623,7 @@ function qr(text) {
 
 
 const D = { m: null, cin: null, date: DATES[0].k };
-const showTimes = c => TIMES.filter((t, i) => (i + c.id.charCodeAt(0)) % 5 !== 4);
+let showTimes = c => TIMES.filter((t, i) => (i + c.id.charCodeAt(0)) % 5 !== 4);
 const fitCinemas = m => { const l = CINEMAS.filter(c => c.fm.some(f => m.fm.includes(f))); return l.length ? l : CINEMAS; };
 function initDetail() {
   $('#detail').onclick = e => {
@@ -570,7 +631,7 @@ function initDetail() {
     const c = e.target.closest('[data-cin]'); if (c) { D.cin = CINEMAS.find(x => x.id === c.dataset.cin); return renderBook(); }
     const dt = e.target.closest('[data-date]'); if (dt) { D.date = dt.dataset.date; return renderBook(); }
     const t = e.target.closest('.time-chip'); if (t && !t.disabled) return openBooking(D.m, { cin: D.cin, time: t.dataset.t, date: D.date });
-    if (e.target.closest('[data-trailer]')) toast('Trailer sẽ được cập nhật sớm');
+    if (e.target.closest('[data-trailer]')) playTrailer(D.m);
     if (e.target.closest('[data-scroll]')) $('#d-book').scrollIntoView({ behavior: 'smooth' });
   };
 }
@@ -760,7 +821,28 @@ function renderRows() {
   $('#adm-rows').innerHTML = list.length ? list.map(it => `<tr>${fs.map(f => `<td>${cell(mod, it, f)}</td>`).join('')}<td class="row-acts"><button data-act="view" data-id="${it.id}">Xem</button><button data-act="edit" data-id="${it.id}">Sửa</button><button class="danger" data-act="del" data-id="${it.id}">Xóa</button></td></tr>`).join('') : `<tr><td colspan="${fs.length + 1}" class="adm-empty">Không có dữ liệu phù hợp. Thử xóa bộ lọc hoặc bấm Thêm mới.</td></tr>`;
   $('#adm-count').textContent = `${list.length} / ${DB[mod].length} mục`;
 }
+let apiModuleLoading = '';
+async function loadApiAndRender(mod) {
+  if (!API_MODULES.has(mod)) return renderModuleNow();
+  if (apiModuleLoading === mod) return;
+  apiModuleLoading = mod;
+  let loadError = null;
+  try { await apiLoadModule(mod); }
+  catch (e) { loadError = e; toast('Không tải được dữ liệu từ máy chủ: ' + (e.message || 'Lỗi kết nối')); }
+  finally { apiModuleLoading = ''; }
+  if (A.v === mod) {
+    renderModuleNow();
+    if (loadError) {
+      const content = $('#adm-content');
+      content.insertAdjacentHTML('afterbegin', `<p class="form-err" role="alert">Không tải được dữ liệu thật. Giao diện đang giữ dữ liệu hiện có; hãy kiểm tra endpoint và kết nối backend. Chi tiết: ${esc(loadError.message || 'Lỗi không xác định')}</p>`);
+    }
+  }
+}
 function renderModule() {
+  if (API_MODULES.has(A.v)) { loadApiAndRender(A.v); return; }
+  renderModuleNow();
+}
+function renderModuleNow() {
   const mod = A.v, M = MOD[mod], stf = M.f.find(f => f.k === 'st'), fs = M.cols.map(k => M.f.find(f => f.k === k));
   $('#adm-title').textContent = M.title;
   $('#adm-tools').innerHTML = `<button class="btn-adm-action" data-act="add">+ Thêm mới</button>`;
@@ -774,20 +856,27 @@ function dlg(html) { const d = $('#adm-dialog'); d.innerHTML = `<div class="adm-
 function closeDlg() { $('#adm-dialog').hidden = true; }
 function openForm(id) {
   const mod = A.v, M = MOD[mod], it = id ? DB[mod].find(x => x.id === id) : null;
-  dlg(`<h3>${it ? 'Sửa' : 'Thêm'} · ${M.title}</h3><form id="adm-form" novalidate>${M.f.map(f => { const v = it ? it[f.k] : M.def()[f.k]; const val = Array.isArray(v) ? v.join(', ') : (v ?? '');
-    return `<label>${f.l}${f.req ? ' *' : ''}${f.sel ? `<select name="${f.k}">${f.sel.map(o => `<option value="${o[0]}"${o[0] === val ? ' selected' : ''}>${o[1]}</option>`).join('')}</select>` : `<input name="${f.k}" type="${f.num ? 'number' : 'text'}" ${f.num ? 'min="0"' : ''} value="${esc(val)}">`}</label>`; }).join('')}
+  dlg(`<h3>${it ? 'Sửa' : 'Thêm'} · ${M.title}</h3><form id="adm-form" novalidate>${M.f.filter(f => !f.ro).map(f => { const v = it ? it[f.k] : M.def()[f.k]; const val = Array.isArray(v) ? v.join(', ') : (v ?? '');
+    return `<label>${f.l}${f.req ? ' *' : ''}${f.sel ? `<select name="${f.k}">${f.sel.map(o => `<option value="${o[0]}"${o[0] === val ? ' selected' : ''}>${o[1]}</option>`).join('')}</select>` : `<input name="${f.k}" type="${f.date ? 'date' : f.num ? 'number' : 'text'}" ${f.num ? 'min="0"' : ''} value="${esc(val)}">`}</label>`; }).join('')}
     <p class="form-err" id="form-err" role="alert"></p><div class="dlg-actions"><button type="button" class="btn-back-adm" data-x>Hủy</button><button type="submit" class="btn-adm-action">Lưu</button></div></form>`);
   $('#adm-form').onsubmit = e => { e.preventDefault(); saveForm(it); };
 }
-function saveForm(it) {
+async function saveForm(it) {
   const mod = A.v, M = MOD[mod], fd = new FormData($('#adm-form')), data = {}, err = $('#form-err');
   for (const f of M.f) {
     let v = String(fd.get(f.k) ?? '').trim();
     if (f.req && !v) return err.textContent = `Vui lòng nhập: ${f.l}.`;
     if (f.num) { v = Number(v); if (!(v >= 0)) return err.textContent = `${f.l} phải là số không âm.`; }
+    if (f.date && v && !/^\d{4}-\d{2}-\d{2}$/.test(v)) return err.textContent = `${f.l} không hợp lệ.`;
     if (f.phone && v && !/^0\d{9}$/.test(v)) return err.textContent = 'Số điện thoại gồm 10 chữ số, bắt đầu bằng 0.';
     if (f.upper) { v = v.toUpperCase(); if (DB[mod].some(x => x.code === v && x !== it)) return err.textContent = `Mã ${v} đã tồn tại.`; }
     data[f.k] = f.list ? (v.split(',').map(s => s.trim()).filter(Boolean).length ? v.split(',').map(s => s.trim()).filter(Boolean) : ['2D']) : v;
+  }
+  if (API_MODULES.has(mod)) {
+    const saveButton = $('#adm-form button[type="submit"]'); if (saveButton) saveButton.disabled = true;
+    try { await apiSaveModule(mod,data,it); afterSave(mod); closeDlg(); renderRows(); toast(it ? 'Đã lưu vào database' : 'Đã thêm vào database'); }
+    catch(e) { err.textContent=e.message||'Không lưu được dữ liệu.'; if(saveButton)saveButton.disabled=false; }
+    return;
   }
   if (it) Object.assign(it, data); else DB[mod].unshift(Object.assign(M.def(), data));
   if (mod === 'orders' && !it) DB.orders[0].id = data.code;
@@ -806,8 +895,61 @@ function viewItem(it) {
 function confirmDel(it) {
   const M = MOD[A.v], name = it.t || it.n || it.code || it.id;
   dlg(`<h3>Xóa "${esc(name)}"?</h3><p class="muted dark">Thao tác này không thể hoàn tác.</p><div class="dlg-actions"><button class="btn-back-adm" data-x>Giữ lại</button><button class="btn-adm-action danger-fill" id="del-ok">Xóa</button></div>`);
-  $('#del-ok').onclick = () => { const i = DB[A.v].indexOf(it); if (i > -1) DB[A.v].splice(i, 1); afterSave(A.v); closeDlg(); renderRows(); toast('Đã xóa'); };
+  $('#del-ok').onclick = async () => {
+    if (API_MODULES.has(A.v)) {
+      const b=$('#del-ok'); b.disabled=true;
+      try { await apiDeleteModule(A.v,it); afterSave(A.v); closeDlg(); renderRows(); toast('Đã xóa trong database'); }
+      catch(e) { $('#adm-dialog .adm-dlg-box').insertAdjacentHTML('beforeend',`<p class="form-err">${esc(e.message)}</p>`); b.disabled=false; }
+      return;
+    }
+    const i=DB[A.v].indexOf(it); if(i>-1)DB[A.v].splice(i,1); afterSave(A.v); closeDlg(); renderRows(); toast('Đã xóa');
+  };
 }
+
+/* API integration: movies, cinemas, rooms, showtimes. Các module còn lại vẫn dùng dữ liệu demo. */
+const API_MODULES = new Set(['movies', 'cinemas', 'rooms', 'showtimes', 'combos', 'promos']);
+const apiStatusToUi = (v, map) => map[v] || 'on';
+const uiStatusToApi = (v, map) => map[v] || v;
+const movieFromApi = x => ({id:x.maPhim,t:x.tenPhim,sub:x.tenPhim,p:x.poster||'photo-1489599849927-2ee91cede3ba',bd:x.poster||'photo-1489599849927-2ee91cede3ba',g:x.theLoai||'',fm:['2D'],d:x.thoiLuong||0,age:({0:'P',13:'T13',16:'T16',18:'T18'}[Number(x.doTuoi)]||'T13'),desc:x.moTa||'',trailer:x.trailer||'',st:apiStatusToUi(x.trangThai,{DangChieu:'now',SapChieu:'soon',NgungChieu:'off'})});
+const cinemaFromApi = x => ({id:x.maRap,n:x.tenRap,a:x.diaChi||'',phone:x.soDienThoai||'',rooms:0,fm:['2D'],room:''});
+const roomFromApi = x => ({id:x.maPhong,n:x.tenPhong,cin:x.maRap,type:({THUONG:'2D',VIP:'IMAX',THREE_D:'3D',FOUR_D:'4DX'}[x.loaiPhong]||'2D'),cap:Number(x.soLuongGhe)||0,st:apiStatusToUi(x.trangThai,{HoatDong:'on',BaoTri:'off',NgungHoatDong:'off'})});
+const showFromApi = x => ({id:x.maSuat,m:x.maPhim,r:x.maPhong,date:String(x.ngayChieu||'').slice(0,10),time:String(x.gioBatDau||'').slice(0,5),end:String(x.gioKetThuc||'').slice(0,5),st:apiStatusToUi(x.trangThai,{SapChieu:'on',DangChieu:'on',DaKetThuc:'off',Huy:'off'})});
+const comboFromApi = x => ({id:x.maCombo,n:x.tenCombo,d:x.moTa||'',p:Number(x.gia)||0,st:apiStatusToUi(x.trangThai,{HoatDong:'on',DangBan:'on',NgungBan:'off',NgungHoatDong:'off'})});
+const promoFromApi = x => ({id:x.maKM,code:x.maKM,desc:x.moTa||x.tenKM||'',type:'percent',value:Number(x.phanTramGiam)||0,start:String(x.ngayBatDau||'').slice(0,10),end:String(x.ngayKetThuc||'').slice(0,10),st:apiStatusToUi(x.trangThai,{DangHoatDong:'on',HetHan:'off',NgungHoatDong:'off'})});
+async function apiLoadModule(mod) {
+  if (!API_MODULES.has(mod)) return;
+  let rows;
+  if (mod === 'movies') rows = await API.get('movies');
+  else if (mod === 'cinemas') rows = await API.get('cinemas');
+  else if (mod === 'rooms') {
+    const cs = await API.get('cinemas'), all = [];
+    for (const c of cs) all.push(...await API.get('rooms?cinema='+encodeURIComponent(c.maRap)));
+    rows = all;
+  } else if (mod === 'combos') rows = await API.get('combos');
+  else rows = await API.get('shows');
+  const mapped = mod === 'movies' ? rows.map(movieFromApi) : mod === 'cinemas' ? rows.map(cinemaFromApi) : mod === 'rooms' ? rows.map(roomFromApi) : mod === 'combos' ? rows.map(comboFromApi) : mod === 'promos' ? rows.map(promoFromApi) : rows.map(showFromApi);
+  DB[mod].splice(0, DB[mod].length, ...mapped);
+}
+function apiPayload(mod, d, existing) {
+  if (mod === 'movies') return {maPhim:existing?.id||d.id||('PH'+Date.now()),tenPhim:d.t,theLoai:d.g||'Chưa phân loại',thoiLuong:Number(d.d)||90,doTuoi:({P:0,T13:13,T16:16,T18:18}[d.age]||13),moTa:d.desc||'',poster:d.p||'',trailer:d.trailer||'',trangThai:uiStatusToApi(d.st,{now:'DangChieu',soon:'SapChieu',off:'NgungChieu'})};
+  if (mod === 'cinemas') return {maRap:existing?.id||d.id||('RAP'+Date.now()),tenRap:d.n,diaChi:d.a||'',soDienThoai:d.phone||''};
+  if (mod === 'combos') return {maCombo:existing?.id||d.id||('CB'+Date.now()),tenCombo:d.n,moTa:d.d||'',gia:Number(d.p)||0,trangThai:uiStatusToApi(d.st,{on:'HoatDong',off:'NgungBan'})};
+  if (mod === 'promos') return {maKM:existing?.id||d.code||d.id||('KM'+Date.now()),tenKM:d.desc||d.code,moTa:d.desc||'',phanTramGiam:Number(d.value)||0,ngayBatDau:d.start,ngayKetThuc:d.end,trangThai:uiStatusToApi(d.st,{on:'DangHoatDong',off:'NgungHoatDong'})};
+  if (mod === 'rooms') return {maPhong:existing?.id||d.id||('P'+Date.now()),tenPhong:d.n,maRap:d.cin,loaiPhong:({'2D':'THUONG','3D':'THREE_D','IMAX':'VIP','4DX':'FOUR_D'}[d.type]||'THUONG'),soLuongGhe:Number(d.cap)||Number(existing?.cap)||0,trangThai:uiStatusToApi(d.st,{on:'HoatDong',off:'BaoTri'})};
+  const dur = Number(movieById(d.m)?.d || 90) + 15, parts = String(d.time||'00:00').split(':').map(Number);
+  const endMins = (parts[0]*60+parts[1]+dur)%(24*60), computedEnd = String(Math.floor(endMins/60)).padStart(2,'0')+':'+String(endMins%60).padStart(2,'0');
+  return {maSuat:existing?.id||d.id||('SC'+Date.now()),maPhim:d.m,maPhong:d.r,ngayChieu:d.date,gioBatDau:d.time,gioKetThuc:d.end||computedEnd,giaSuat:100000,trangThai:uiStatusToApi(d.st,{on:'SapChieu',off:'Huy'})};
+}
+async function apiSaveModule(mod, d, existing) {
+  const payload=apiPayload(mod,d,existing), path=({movies:'movies',cinemas:'cinemas',rooms:'rooms',showtimes:'shows',combos:'combos',promos:'promotions'})[mod];
+  if(existing) await API.put(path+'/'+encodeURIComponent(existing.id),payload); else await API.post(path,payload);
+  await apiLoadModule(mod);
+}
+async function apiDeleteModule(mod,item) {
+  const path=({movies:'movies',cinemas:'cinemas',rooms:'rooms',showtimes:'shows',combos:'combos',promos:'promotions'})[mod];
+  await API.delete(path+'/'+encodeURIComponent(item.id)); await apiLoadModule(mod);
+}
+
 function initAdmin() {
   $('#adm-menu').onclick = e => { const a = e.target.closest('.adm-item'); if (!a) return; e.preventDefault(); A.v = a.dataset.v; A.q = ''; A.f = 'all'; $$('.adm-item').forEach(x => x.classList.toggle('active', x === a)); renderAdmin(); };
   $('#adm-tools').onclick = e => { const p = e.target.closest('.pill'); if (p) { A.range = +p.dataset.r; renderAdmin(); } };
@@ -816,7 +958,22 @@ function initAdmin() {
     const it = DB[A.v]?.find(x => x.id === b.dataset.id), act = b.dataset.act;
     if (act === 'add') openForm(); else if (act === 'edit') openForm(b.dataset.id);
     else if (act === 'view' && it) viewItem(it); else if (act === 'del' && it) confirmDel(it);
-    else if (act === 'st' && it) { const f = MOD[A.v].f.find(x => x.k === 'st'), i = f.sel.findIndex(o => o[0] === it.st); it.st = f.sel[(i + 1) % f.sel.length][0]; afterSave(A.v); renderRows(); toast('Đã đổi trạng thái'); }
+    else if (act === 'st' && it) {
+      const mod = A.v, f = MOD[mod].f.find(x => x.k === 'st');
+      if (!f || !f.sel || !f.sel.length) return;
+      const i = f.sel.findIndex(o => o[0] === it.st), next = f.sel[(i + 1) % f.sel.length][0];
+      if (API_MODULES.has(mod)) {
+        const draft = { ...it, st: next };
+        const button = e.target.closest('[data-act="st"]');
+        if (button) button.disabled = true;
+        apiSaveModule(mod, draft, it).then(() => {
+          afterSave(mod); renderRows(); toast('Đã cập nhật trạng thái trong database');
+        }).catch(err => {
+          toast('Không thể cập nhật trạng thái: ' + (err.message || 'Lỗi máy chủ'));
+          if (button) button.disabled = false;
+        });
+      } else { it.st = next; afterSave(mod); renderRows(); toast('Đã đổi trạng thái'); }
+    }
   });
   $('#adm-dialog').onclick = e => { if (e.target.id === 'adm-dialog' || e.target.closest('[data-x]')) closeDlg(); };
   syncPromos(); renderAdmin();
@@ -840,1016 +997,4 @@ function renderAdmin() {
   <section class="adm-two"><div class="adm-table-card"><h3>Doanh thu (triệu đồng)</h3><svg class="adm-chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="Biểu đồ doanh thu">${bars}</svg></div>
     <div class="adm-table-card"><h3>Doanh thu theo phim</h3>${byMovie.map(b => `<div class="bar-row"><span>${b.t}</span><div class="bar-track"><i style="width:${b.v / tot * 220}%"></i></div><b>${Math.round(b.v / tot * 100)}%</b></div>`).join('')}</div></section>
   <div class="adm-table-card"><h3>Giao dịch gần đây</h3><div class="adm-scroll">${table(['Mã đơn', 'Phim', 'Rạp', 'Suất', 'Ghế', 'Tổng tiền', 'Trạng thái'], DB.orders.slice(0, 5).map(o => [`<code>${esc(o.code)}</code>`, `<strong>${esc(o.movie)}</strong>`, esc(o.cin), esc(o.time), esc(o.seats), fmt(Number(o.total) || 0), badge(...stLab[o.st] || stLab.wait)]))}</div></div>`;
-}
-/* ================= THÔNG TIN TÀI KHOẢN ================= */
-function initAccountInfo() {
-  const viewCustomer = $('#view-customer');
-  const viewAccount = $('#view-account');
-  const accountButton = $('#account-info');
-  const backButton = $('#account-back');
-  const form = $('#account-form');
-  const cancelButton = $('#account-cancel');
-  const message = $('#account-message');
-  const avatarFile = $('#account-avatar-file');
-  const avatarPreview = $('#account-avatar-preview');
-
-  if (!viewCustomer || !viewAccount || !form) return;
-
-  let savedData = {};
-  let savedAvatar = avatarPreview.src;
-
-  const getData = () => ({
-    name: $('#account-name').value.trim(),
-    email: $('#account-email').value.trim(),
-    phone: $('#account-phone').value.trim(),
-    birthday: $('#account-birthday').value,
-    gender: $('#account-gender').value
-  });
-
-  const saveSnapshot = () => {
-    savedData = getData();
-    savedAvatar = avatarPreview.src;
-  };
-
-  const restoreData = () => {
-    Object.entries(savedData).forEach(([key, value]) => {
-      const field = form.elements[key];
-      if (field) field.value = value;
-    });
-
-    avatarPreview.src = savedAvatar;
-    message.textContent = '';
-    message.style.color = '';
-  };
-
-  const showAccount = () => {
-    saveSnapshot();
-    $('#user-menu')?.classList.remove('active');
-    viewCustomer.classList.remove('active');
-    viewAccount.classList.add('active');
-    window.scrollTo(0, 0);
-  };
-
-  const showCustomer = () => {
-    viewAccount.classList.remove('active');
-    viewCustomer.classList.add('active');
-    window.scrollTo(0, 0);
-  };
-
-  accountButton?.addEventListener('click', showAccount);
-  backButton?.addEventListener('click', showCustomer);
-  cancelButton?.addEventListener('click', () => {
-    restoreData();
-  });
-
-  form.addEventListener('submit', e => {
-    e.preventDefault();
-
-    const data = getData();
-
-    if (!data.name || !data.email) {
-      message.style.color = '#ff7373';
-      message.textContent = 'Vui lòng nhập họ tên và email.';
-      return;
-    }
-
-    if (!$('#account-email').validity.valid) {
-      message.style.color = '#ff7373';
-      message.textContent = 'Email không đúng định dạng.';
-      return;
-    }
-
-    $('#account-display-name').textContent = data.name;
-
-    const menuName = document.querySelector('.user-menu-name');
-    if (menuName) menuName.textContent = '👤 ' + data.name;
-
-    savedData = data;
-    savedAvatar = avatarPreview.src;
-
-    message.style.color = '#7ee787';
-    message.textContent = 'Thông tin đã được cập nhật trên giao diện demo.';
-  });
-
-  avatarFile?.addEventListener('change', () => {
-    const file = avatarFile.files[0];
-    if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-      message.style.color = '#ff7373';
-      message.textContent = 'Vui lòng chọn file hình ảnh.';
-      avatarFile.value = '';
-      return;
-    }
-
-    const reader = new FileReader();
-
-    reader.onload = () => {
-      avatarPreview.src = reader.result;
-      $('#user-avatar img').src = reader.result;
-      message.style.color = '';
-      message.textContent = 'Ảnh đại diện đã thay đổi. Nhấn Lưu thông tin để xác nhận.';
-    };
-
-    reader.readAsDataURL(file);
-  });
-
-  saveSnapshot();
-}
-
-
-/* ================= VÉ CỦA TÔI ================= */
-function initMyTickets() {
-  const view = $('#view-tickets');
-  const customerView = $('#view-customer');
-  const openButton = $('#my-tickets');
-  const backButton = $('#tickets-back');
-  const list = $('#tickets-list');
-  const empty = $('#tickets-empty');
-
-  if (!view || !customerView || !list) return;
-
-  // Dữ liệu mẫu để kiểm tra giao diện, chưa lấy từ database.
-  const sampleTickets = [
-    {
-      code: 'VC260001',
-      title: 'Avengers: Endgame',
-      poster: 'https://image.tmdb.org/t/p/w500/or06FN3Dka5tukK1e9sl16pB3iy.jpg',
-      date: '25/10/2026',
-      time: '19:30',
-      cinema: 'VIECENT Cinema',
-      room: 'Phòng 03',
-      seats: 'G5, G6',
-      status: 'upcoming',
-      statusText: 'Sắp chiếu'
-    },
-    {
-      code: 'VC260002',
-      title: 'Spider-Man: No Way Home',
-      poster: 'https://image.tmdb.org/t/p/w500/1g0dhYtq4irTY1GPXvft6k4YLjm.jpg',
-      date: '20/09/2026',
-      time: '14:00',
-      cinema: 'VIECENT Cinema',
-      room: 'Phòng 02',
-      seats: 'F7, F8',
-      status: 'used',
-      statusText: 'Đã sử dụng'
-    }
-  ];
-
-  let activeFilter = 'all';
-
-  const renderTickets = () => {
-    const tickets = sampleTickets.filter(ticket =>
-        activeFilter === 'all' || ticket.status === activeFilter
-    );
-
-    list.innerHTML = '';
-    empty.hidden = tickets.length > 0;
-
-    tickets.forEach(ticket => {
-      const card = document.createElement('article');
-      card.className = 'ticket-card';
-
-      const poster = document.createElement('img');
-      poster.className = 'ticket-poster';
-      poster.src = ticket.poster;
-      poster.alt = ticket.title;
-      poster.loading = 'lazy';
-      poster.onerror = () => { poster.style.visibility = 'hidden'; };
-
-      const info = document.createElement('div');
-      info.className = 'ticket-info';
-
-      const top = document.createElement('div');
-      top.className = 'ticket-info-top';
-
-      const heading = document.createElement('div');
-      const title = document.createElement('h3');
-      title.textContent = ticket.title;
-
-      const code = document.createElement('span');
-      code.className = 'ticket-code';
-      code.textContent = 'Mã vé: ' + ticket.code;
-
-      heading.append(title, code);
-
-      const status = document.createElement('span');
-      status.className = 'ticket-status ' + ticket.status;
-      status.textContent = ticket.statusText;
-      top.append(heading, status);
-
-      const details = document.createElement('div');
-      details.className = 'ticket-details';
-
-      [
-        ['Ngày chiếu', ticket.date],
-        ['Giờ chiếu', ticket.time],
-        ['Rạp / Phòng', ticket.cinema + ' / ' + ticket.room],
-        ['Ghế ngồi', ticket.seats]
-      ].forEach(([label, value]) => {
-        const item = document.createElement('div');
-        item.className = 'ticket-detail';
-
-        const name = document.createElement('span');
-        name.textContent = label;
-
-        const strong = document.createElement('strong');
-        strong.textContent = value;
-
-        item.append(name, strong);
-        details.appendChild(item);
-      });
-
-      info.append(top, details);
-      card.append(poster, info);
-      list.appendChild(card);
-    });
-  };
-
-  openButton?.addEventListener('click', () => {
-    $('#user-menu')?.classList.remove('active');
-    customerView.classList.remove('active');
-    view.classList.add('active');
-    renderTickets();
-    window.scrollTo(0, 0);
-  });
-
-  backButton?.addEventListener('click', () => {
-    view.classList.remove('active');
-    customerView.classList.add('active');
-    window.scrollTo(0, 0);
-  });
-
-  document.querySelectorAll('[data-ticket-filter]').forEach(button => {
-    button.addEventListener('click', () => {
-      activeFilter = button.dataset.ticketFilter;
-
-      document.querySelectorAll('[data-ticket-filter]').forEach(tab =>
-          tab.classList.toggle('active', tab === button)
-      );
-
-      renderTickets();
-    });
-  });
-
-  renderTickets();
-}
-
-
-/* ================= LỊCH SỬ ĐẶT VÉ ================= */
-function initBookingHistory() {
-  const view = $('#view-booking-history');
-  const customerView = $('#view-customer');
-  const openButton = $('#booking-history');
-  const backButton = $('#history-back');
-  const tbody = $('#history-table-body');
-  const mobileList = $('#history-mobile-list');
-  const empty = $('#history-empty');
-  const search = $('#history-search');
-  const filter = $('#history-filter');
-  const modal = $('#history-modal');
-  const modalContent = $('#history-modal-content');
-
-  if (!view || !customerView || !tbody) return;
-
-  const orders = [
-    { code: 'VC260001', movie: 'Avengers: Endgame', date: '08/10/2026', tickets: 2, total: 180000, status: 'completed', statusText: 'Hoàn thành', cinema: 'VIECENT Cinema', showDate: '08/10/2026', showTime: '19:30', seats: 'G5, G6', payment: 'Đã thanh toán' },
-    { code: 'VC260002', movie: 'Spider-Man: No Way Home', date: '05/10/2026', tickets: 2, total: 200000, status: 'completed', statusText: 'Hoàn thành', cinema: 'VIECENT Cinema', showDate: '10/10/2026', showTime: '14:00', seats: 'F7, F8', payment: 'Đã thanh toán' },
-    { code: 'VC260003', movie: 'Inside Out 2', date: '09/10/2026', tickets: 3, total: 270000, status: 'pending', statusText: 'Chờ xác nhận', cinema: 'VIECENT Cinema', showDate: '15/10/2026', showTime: '17:00', seats: 'D4, D5, D6', payment: 'Đang chờ thanh toán' },
-    { code: 'VC260004', movie: 'The Batman', date: '01/10/2026', tickets: 2, total: 160000, status: 'cancelled', statusText: 'Đã hủy', cinema: 'VIECENT Cinema', showDate: '03/10/2026', showTime: '20:00', seats: 'H3, H4', payment: 'Đơn đã hủy' }
-  ];
-
-  const money = value => new Intl.NumberFormat('vi-VN', {
-    style: 'currency', currency: 'VND', maximumFractionDigits: 0
-  }).format(value);
-
-  const makeStatus = order => {
-    const status = document.createElement('span');
-    status.className = 'history-status ' + order.status;
-    status.textContent = order.statusText;
-    return status;
-  };
-
-  const showDetails = order => {
-    modalContent.innerHTML = '';
-
-    [
-      ['Mã đơn', order.code],
-      ['Tên phim', order.movie],
-      ['Ngày đặt', order.date],
-      ['Ngày chiếu', order.showDate],
-      ['Giờ chiếu', order.showTime],
-      ['Rạp', order.cinema],
-      ['Ghế ngồi', order.seats],
-      ['Số vé', order.tickets],
-      ['Tổng tiền', money(order.total)],
-      ['Thanh toán', order.payment],
-      ['Trạng thái', order.statusText]
-    ].forEach(([label, value]) => {
-      const row = document.createElement('div');
-      row.className = 'history-modal-row';
-
-      const name = document.createElement('span');
-      name.textContent = label;
-
-      const text = document.createElement('strong');
-      text.textContent = value;
-
-      row.append(name, text);
-      modalContent.appendChild(row);
-    });
-
-    modal.hidden = false;
-  };
-
-  const render = () => {
-    const keyword = search.value.trim().toLowerCase();
-    const statusFilter = filter.value;
-
-    const filtered = orders.filter(order =>
-        (statusFilter === 'all' || order.status === statusFilter) &&
-        (order.code.toLowerCase().includes(keyword) ||
-            order.movie.toLowerCase().includes(keyword))
-    );
-
-    $('#history-total').textContent = orders.length;
-    $('#history-completed').textContent = orders.filter(o => o.status === 'completed').length;
-    $('#history-cancelled').textContent = orders.filter(o => o.status === 'cancelled').length;
-
-    tbody.innerHTML = '';
-    mobileList.innerHTML = '';
-    empty.hidden = filtered.length > 0;
-
-    filtered.forEach(order => {
-      const tr = document.createElement('tr');
-      const values = [order.code, order.movie, order.date, order.tickets, money(order.total)];
-
-      values.forEach((value, index) => {
-        const td = document.createElement('td');
-        td.textContent = value;
-        if (index === 0) td.className = 'history-code';
-        tr.appendChild(td);
-      });
-
-      const statusCell = document.createElement('td');
-      statusCell.appendChild(makeStatus(order));
-      tr.appendChild(statusCell);
-
-      const actionCell = document.createElement('td');
-      const detailButton = document.createElement('button');
-      detailButton.type = 'button';
-      detailButton.className = 'history-detail-btn';
-      detailButton.textContent = 'Chi tiết';
-      detailButton.addEventListener('click', () => showDetails(order));
-      actionCell.appendChild(detailButton);
-      tr.appendChild(actionCell);
-      tbody.appendChild(tr);
-
-      const card = document.createElement('article');
-      card.className = 'history-mobile-card';
-
-      const title = document.createElement('h3');
-      title.textContent = order.movie + ' · ' + order.code;
-
-      const date = document.createElement('p');
-      date.textContent = 'Ngày đặt: ' + order.date;
-
-      const count = document.createElement('p');
-      count.textContent = 'Số vé: ' + order.tickets;
-
-      const total = document.createElement('p');
-      total.textContent = 'Tổng tiền: ' + money(order.total);
-
-      const status = makeStatus(order);
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'history-detail-btn';
-      button.textContent = 'Xem chi tiết';
-      button.style.marginTop = '12px';
-      button.addEventListener('click', () => showDetails(order));
-
-      card.append(title, date, count, total, status, button);
-      mobileList.appendChild(card);
-    });
-  };
-
-  openButton?.addEventListener('click', () => {
-    $('#user-menu')?.classList.remove('active');
-    customerView.classList.remove('active');
-    view.classList.add('active');
-    render();
-    window.scrollTo(0, 0);
-  });
-
-  backButton?.addEventListener('click', () => {
-    view.classList.remove('active');
-    customerView.classList.add('active');
-    window.scrollTo(0, 0);
-  });
-
-  search.addEventListener('input', render);
-  filter.addEventListener('change', render);
-
-  $('#history-modal-close')?.addEventListener('click', () => {
-    modal.hidden = true;
-  });
-
-  modal.addEventListener('click', e => {
-    if (e.target === modal) modal.hidden = true;
-  });
-
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') modal.hidden = true;
-  });
-
-  render();
-}
-
-
-/* ================= ƯU ĐÃI CỦA TÔI ================= */
-function initMyPromotions() {
-  const view = $('#view-promotions');
-  const customerView = $('#view-customer');
-  const openButton = $('#my-promotions');
-  const backButton = $('#promo-back');
-  const list = $('#my-promo-list');
-  const empty = $('#promo-empty');
-  const message = $('#promo-message');
-
-  if (!view || !customerView || !list) return;
-
-  const promotions = [
-    { code: 'VIECENT10', title: 'Giảm 10% vé xem phim', value: '10%', description: 'Giảm 10% giá vé cho đơn hàng đủ điều kiện.', expiry: '31/12/2026', status: 'valid', statusText: 'Còn hiệu lực' },
-    { code: 'MOVIE500', title: 'Ưu đãi thành viên', value: '50K', description: 'Giảm 50.000đ cho đơn hàng từ 200.000đ.', expiry: '30/11/2026', status: 'valid', statusText: 'Còn hiệu lực' },
-    { code: 'WEEKEND20', title: 'Ưu đãi cuối tuần', value: '20%', description: 'Ưu đãi mẫu dành cho vé xem phim cuối tuần.', expiry: '15/09/2026', status: 'used', statusText: 'Đã sử dụng' },
-    { code: 'WELCOME30', title: 'Ưu đãi chào thành viên', value: '30K', description: 'Giảm 30.000đ cho đơn hàng đủ điều kiện.', expiry: '01/08/2026', status: 'expired', statusText: 'Hết hạn' }
-  ];
-
-  let activeFilter = 'all';
-
-  const render = () => {
-    const items = promotions.filter(p =>
-        activeFilter === 'all' || p.status === activeFilter
-    );
-
-    $('#promo-total').textContent = promotions.length;
-    $('#promo-valid').textContent = promotions.filter(p => p.status === 'valid').length;
-    $('#promo-used').textContent = promotions.filter(p => p.status === 'used').length;
-
-    list.innerHTML = '';
-    empty.hidden = items.length > 0;
-
-    items.forEach(promo => {
-      const card = document.createElement('article');
-      card.className = 'promo-card';
-
-      const value = document.createElement('div');
-      value.className = 'promo-value';
-
-      const amount = document.createElement('strong');
-      amount.textContent = promo.value;
-
-      const label = document.createElement('span');
-      label.textContent = 'ƯU ĐÃI';
-
-      value.append(amount, label);
-
-      const details = document.createElement('div');
-      details.className = 'promo-details';
-
-      const title = document.createElement('h3');
-      title.textContent = promo.title;
-
-      const description = document.createElement('p');
-      description.textContent = promo.description;
-
-      const expiry = document.createElement('p');
-      expiry.textContent = 'Hạn sử dụng: ' + promo.expiry;
-
-      const status = document.createElement('span');
-      status.className = 'promo-status ' + promo.status;
-      status.textContent = promo.statusText;
-
-      details.append(title, description, expiry, status);
-
-      const codeRow = document.createElement('div');
-      codeRow.className = 'promo-code-row';
-
-      const code = document.createElement('span');
-      code.className = 'promo-code';
-      code.textContent = promo.code;
-
-      codeRow.appendChild(code);
-
-      if (promo.status === 'valid') {
-        const copyButton = document.createElement('button');
-        copyButton.type = 'button';
-        copyButton.className = 'promo-copy';
-        copyButton.textContent = 'Sao chép';
-
-        copyButton.addEventListener('click', async () => {
-          try {
-            await navigator.clipboard.writeText(promo.code);
-            message.style.color = '#7ee787';
-            message.textContent = 'Đã sao chép mã ' + promo.code + '.';
-          } catch {
-            message.style.color = '#ffb84d';
-            message.textContent = 'Không thể sao chép tự động. Mã ưu đãi: ' + promo.code;
-          }
-        });
-
-        codeRow.appendChild(copyButton);
-      }
-
-      details.appendChild(codeRow);
-      card.append(value, details);
-      list.appendChild(card);
-    });
-  };
-
-  openButton?.addEventListener('click', () => {
-    $('#user-menu')?.classList.remove('active');
-    customerView.classList.remove('active');
-    view.classList.add('active');
-    message.textContent = '';
-    render();
-    window.scrollTo(0, 0);
-  });
-
-  backButton?.addEventListener('click', () => {
-    view.classList.remove('active');
-    customerView.classList.add('active');
-    window.scrollTo(0, 0);
-  });
-
-  document.querySelectorAll('[data-promo-filter]').forEach(button => {
-    button.addEventListener('click', () => {
-      activeFilter = button.dataset.promoFilter;
-
-      document.querySelectorAll('[data-promo-filter]').forEach(tab =>
-          tab.classList.toggle('active', tab === button)
-      );
-
-      message.textContent = '';
-      render();
-    });
-  });
-
-  render();
-}
-
-
-function initFavoriteMovies() {
-  const menuButton = document.getElementById('favorite-movies');
-  const view = document.getElementById('view-favorites');
-  const customerView = document.getElementById('view-customer');
-  const backButton = document.getElementById('favorites-back');
-  const list = document.getElementById('favorite-list');
-  const empty = document.getElementById('favorite-empty');
-  const search = document.getElementById('favorite-search');
-  const count = document.getElementById('favorite-count');
-  const message = document.getElementById('favorite-message');
-  const userMenu = document.getElementById('user-menu');
-
-  if (!menuButton || !view || !list || !customerView) return;
-
-  let activeFilter = 'all';
-
-  // Dữ liệu minh họa cho giao diện, chưa lấy từ database.
-  let movies = [
-    { id: 1, title: 'Dune: Part Two', genre: 'Khoa học viễn tưởng', year: 2024, duration: '166 phút', rating: '8.5', state: 'now', poster: 'https://image.tmdb.org/t/p/w500/1pdfLvkbY9ohJlCjQH2CZjjYVvJ.jpg' },
-    { id: 2, title: 'Inside Out 2', genre: 'Hoạt hình · Gia đình', year: 2024, duration: '96 phút', rating: '7.6', state: 'now', poster: 'https://image.tmdb.org/t/p/w500/vpnVM9B6NMmQpWeZvzLvDESb2QY.jpg' },
-    { id: 3, title: 'The Batman', genre: 'Hành động · Trinh thám', year: 2022, duration: '176 phút', rating: '7.8', state: 'now', poster: 'https://image.tmdb.org/t/p/w500/74xTEgt7R36Fpooo50r9T25onhq.jpg' },
-    { id: 4, title: 'Deadpool & Wolverine', genre: 'Hành động · Hài', year: 2024, duration: '128 phút', rating: '7.6', state: 'coming', poster: 'https://image.tmdb.org/t/p/w500/8cdWjvZQUExUUTzyp4t6EDMubfO.jpg' }
-  ];
-
-  function renderMovies() {
-    const keyword = (search?.value || '').trim().toLowerCase();
-    const filtered = movies.filter(movie => {
-      const matchesFilter = activeFilter === 'all' || movie.state === activeFilter;
-      const matchesSearch = movie.title.toLowerCase().includes(keyword) || movie.genre.toLowerCase().includes(keyword);
-      return matchesFilter && matchesSearch;
-    });
-
-    list.replaceChildren();
-    count.textContent = `${movies.length} phim yêu thích`;
-    empty.hidden = filtered.length !== 0;
-
-    if (movies.length === 0) {
-      empty.querySelector('h3').textContent = 'Danh sách yêu thích đang trống';
-      empty.querySelector('p').textContent = 'Bạn có thể thêm phim vào danh sách khi xem thông tin phim.';
-    } else if (filtered.length === 0) {
-      empty.querySelector('h3').textContent = 'Không tìm thấy phim';
-      empty.querySelector('p').textContent = 'Thử đổi từ khóa hoặc chọn bộ lọc khác nhé.';
-    }
-
-    filtered.forEach(movie => {
-      const card = document.createElement('article');
-      card.className = 'favorite-card';
-
-      const posterWrap = document.createElement('div');
-      posterWrap.className = 'favorite-poster-wrap';
-
-      const poster = document.createElement('img');
-      poster.className = 'favorite-poster';
-      poster.src = movie.poster;
-      poster.alt = `Poster phim ${movie.title}`;
-      poster.loading = 'lazy';
-      poster.onerror = () => {
-        poster.onerror = null;
-        poster.src = 'https://placehold.co/500x750/202033/D4AF37?text=VIECENT';
-      };
-
-      const rating = document.createElement('span');
-      rating.className = 'favorite-rating';
-      rating.textContent = `★ ${movie.rating}`;
-
-      const state = document.createElement('span');
-      state.className = 'favorite-state';
-      state.textContent = movie.state === 'now' ? 'Đang chiếu' : 'Sắp chiếu';
-
-      posterWrap.append(poster, rating, state);
-
-      const body = document.createElement('div');
-      body.className = 'favorite-card-body';
-
-      const title = document.createElement('h3');
-      title.className = 'favorite-card-title';
-      title.textContent = movie.title;
-
-      const meta = document.createElement('div');
-      meta.className = 'favorite-meta';
-      meta.textContent = `${movie.genre} · ${movie.year} · ${movie.duration}`;
-
-      const remove = document.createElement('button');
-      remove.type = 'button';
-      remove.className = 'favorite-remove';
-      remove.textContent = '♡ Bỏ yêu thích';
-      remove.addEventListener('click', () => {
-        movies = movies.filter(item => item.id !== movie.id);
-        message.textContent = `Đã xóa "${movie.title}" khỏi danh sách minh họa.`;
-        renderMovies();
-      });
-
-      body.append(title, meta, remove);
-      card.append(posterWrap, body);
-      list.appendChild(card);
-    });
-  }
-
-  menuButton.addEventListener('click', () => {
-    if (userMenu) userMenu.classList.remove('active');
-    customerView.classList.remove('active');
-    view.classList.add('active');
-    message.textContent = '';
-    renderMovies();
-  });
-
-  backButton?.addEventListener('click', () => {
-    view.classList.remove('active');
-    customerView.classList.add('active');
-  });
-
-  document.querySelectorAll('[data-favorite-filter]').forEach(button => {
-    button.addEventListener('click', () => {
-      activeFilter = button.dataset.favoriteFilter;
-      document.querySelectorAll('[data-favorite-filter]').forEach(tab => tab.classList.remove('active'));
-      button.classList.add('active');
-      renderMovies();
-    });
-  });
-
-  search?.addEventListener('input', renderMovies);
-
-  renderMovies();
-}
-
-
-function initNotifications() {
-  const menuButton = document.getElementById('notifications');
-  const view = document.getElementById('view-notifications');
-  const customerView = document.getElementById('view-customer');
-  const backButton = document.getElementById('notifications-back');
-  const list = document.getElementById('notification-list');
-  const empty = document.getElementById('notification-empty');
-  const totalElement = document.getElementById('notification-total');
-  const unreadElement = document.getElementById('notification-unread');
-  const readAllButton = document.getElementById('notification-read-all');
-  const message = document.getElementById('notification-message');
-  const userMenu = document.getElementById('user-menu');
-
-  if (!menuButton || !view || !customerView || !list) return;
-
-  let activeFilter = 'all';
-
-  // Dữ liệu minh họa, chưa kết nối hệ thống thông báo thật.
-  const notifications = [
-    { id: 1, icon: '🎟', title: 'Đặt vé thành công', description: 'Thông tin đặt vé mẫu của bạn đã được cập nhật. Hãy kiểm tra mục Vé của tôi để xem chi tiết.', time: 'Hôm nay · 09:30', read: false },
-    { id: 2, icon: '🎁', title: 'Ưu đãi dành cho thành viên', description: 'Bạn có thể khám phá các mã ưu đãi trong mục Ưu đãi của tôi.', time: 'Hôm qua · 15:20', read: false },
-    { id: 3, icon: '🎬', title: 'Phim mới được cập nhật', description: 'Danh sách phim trên VIECENT đã có nội dung mới. Hãy khám phá các bộ phim bạn yêu thích.', time: '07/10/2026 · 10:00', read: true },
-    { id: 4, icon: '♛', title: 'Chào mừng thành viên VIECENT', description: 'Cảm ơn bạn đã sử dụng VIECENT. Chúc bạn có những trải nghiệm xem phim thú vị.', time: '05/10/2026 · 08:00', read: true }
-  ];
-
-  function renderNotifications() {
-    const unreadCount = notifications.filter(item => !item.read).length;
-    totalElement.textContent = notifications.length;
-    unreadElement.textContent = unreadCount;
-
-    const filtered = notifications.filter(item => {
-      if (activeFilter === 'unread') return !item.read;
-      if (activeFilter === 'read') return item.read;
-      return true;
-    });
-
-    list.replaceChildren();
-    empty.hidden = filtered.length > 0;
-    readAllButton.disabled = unreadCount === 0;
-    readAllButton.style.opacity = unreadCount === 0 ? '.5' : '1';
-    readAllButton.style.cursor = unreadCount === 0 ? 'not-allowed' : 'pointer';
-
-    filtered.forEach(item => {
-      const card = document.createElement('article');
-      card.className = `notification-item${item.read ? '' : ' unread'}`;
-
-      const icon = document.createElement('div');
-      icon.className = 'notification-icon';
-      icon.textContent = item.icon;
-      icon.setAttribute('aria-hidden', 'true');
-
-      const body = document.createElement('div');
-      body.className = 'notification-body';
-
-      const titleRow = document.createElement('div');
-      titleRow.className = 'notification-title-row';
-
-      const title = document.createElement('h3');
-      title.className = 'notification-title';
-      title.textContent = item.title;
-      titleRow.appendChild(title);
-
-      if (!item.read) {
-        const dot = document.createElement('span');
-        dot.className = 'notification-unread-dot';
-        dot.setAttribute('aria-label', 'Chưa đọc');
-        titleRow.appendChild(dot);
-      }
-
-      const description = document.createElement('p');
-      description.className = 'notification-description';
-      description.textContent = item.description;
-
-      const time = document.createElement('span');
-      time.className = 'notification-time';
-      time.textContent = item.time;
-
-      body.append(titleRow, description, time);
-
-      const actions = document.createElement('div');
-      actions.className = 'notification-actions';
-
-      if (!item.read) {
-        const readButton = document.createElement('button');
-        readButton.type = 'button';
-        readButton.className = 'notification-action';
-        readButton.textContent = 'Đánh dấu đã đọc';
-        readButton.addEventListener('click', () => {
-          item.read = true;
-          message.textContent = 'Đã đánh dấu thông báo là đã đọc.';
-          renderNotifications();
-        });
-        actions.appendChild(readButton);
-      } else {
-        const readLabel = document.createElement('span');
-        readLabel.className = 'notification-time';
-        readLabel.textContent = 'Đã đọc ✓';
-        actions.appendChild(readLabel);
-      }
-
-      card.append(icon, body, actions);
-      list.appendChild(card);
-    });
-  }
-
-  menuButton.addEventListener('click', () => {
-    if (userMenu) userMenu.classList.remove('active');
-    customerView.classList.remove('active');
-    view.classList.add('active');
-    message.textContent = '';
-    renderNotifications();
-  });
-
-  backButton?.addEventListener('click', () => {
-    view.classList.remove('active');
-    customerView.classList.add('active');
-  });
-
-  document.querySelectorAll('[data-notification-filter]').forEach(button => {
-    button.addEventListener('click', () => {
-      activeFilter = button.dataset.notificationFilter;
-      document.querySelectorAll('[data-notification-filter]').forEach(tab => tab.classList.remove('active'));
-      button.classList.add('active');
-      renderNotifications();
-    });
-  });
-
-  readAllButton.addEventListener('click', () => {
-    notifications.forEach(item => {
-      item.read = true;
-    });
-    message.textContent = 'Đã đánh dấu tất cả thông báo là đã đọc.';
-    renderNotifications();
-  });
-
-  renderNotifications();
-}
-
-
-function initSettings() {
-  const menuButton = document.getElementById('settings');
-  const view = document.getElementById('view-settings');
-  const customerView = document.getElementById('view-customer');
-  const backButton = document.getElementById('settings-back');
-  const form = document.getElementById('settings-form');
-  const themeSelect = document.getElementById('settings-theme');
-  const languageSelect = document.getElementById('settings-language');
-  const promotions = document.getElementById('settings-promotions');
-  const newMovies = document.getElementById('settings-new-movies');
-  const bookings = document.getElementById('settings-bookings');
-  const resetButton = document.getElementById('settings-reset');
-  const message = document.getElementById('settings-message');
-  const userMenu = document.getElementById('user-menu');
-  const page = view?.querySelector('.settings-page');
-
-  if (!menuButton || !view || !customerView || !form) return;
-
-  const defaults = {
-    theme: 'dark',
-    language: 'vi',
-    promotions: true,
-    newMovies: true,
-    bookings: true
-  };
-
-  function applyTheme(theme) {
-    const resolvedTheme = theme === 'system'
-        ? (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
-        : theme;
-
-    page?.classList.toggle('settings-light', resolvedTheme === 'light');
-  }
-
-  function resetForm() {
-    themeSelect.value = defaults.theme;
-    languageSelect.value = defaults.language;
-    promotions.checked = defaults.promotions;
-    newMovies.checked = defaults.newMovies;
-    bookings.checked = defaults.bookings;
-    applyTheme(defaults.theme);
-    message.textContent = 'Đã khôi phục các tùy chọn mặc định. Bấm Lưu cài đặt để xác nhận.';
-  }
-
-  menuButton.addEventListener('click', () => {
-    if (userMenu) userMenu.classList.remove('active');
-    customerView.classList.remove('active');
-    view.classList.add('active');
-    message.textContent = '';
-    applyTheme(themeSelect.value);
-  });
-
-  backButton?.addEventListener('click', () => {
-    view.classList.remove('active');
-    customerView.classList.add('active');
-  });
-
-  themeSelect.addEventListener('change', () => {
-    applyTheme(themeSelect.value);
-  });
-
-  form.addEventListener('submit', event => {
-    event.preventDefault();
-
-    const settings = {
-      theme: themeSelect.value,
-      language: languageSelect.value,
-      promotions: promotions.checked,
-      newMovies: newMovies.checked,
-      bookings: bookings.checked
-    };
-
-    // Lưu tạm trong trình duyệt; chưa đồng bộ với tài khoản trên server.
-    try {
-      localStorage.setItem('viecent-settings', JSON.stringify(settings));
-    } catch (error) {
-      // Nếu trình duyệt không cho lưu, cài đặt vẫn áp dụng trong phiên hiện tại.
-    }
-
-    applyTheme(settings.theme);
-    message.textContent = 'Cài đặt đã được áp dụng.';
-  });
-
-  resetButton.addEventListener('click', resetForm);
-
-  // Nạp lại tùy chọn đã lưu trên trình duyệt nếu có.
-  try {
-    const saved = JSON.parse(localStorage.getItem('viecent-settings') || 'null');
-
-    if (saved) {
-      themeSelect.value = saved.theme || defaults.theme;
-      languageSelect.value = saved.language || defaults.language;
-      promotions.checked = saved.promotions ?? defaults.promotions;
-      newMovies.checked = saved.newMovies ?? defaults.newMovies;
-      bookings.checked = saved.bookings ?? defaults.bookings;
-    }
-  } catch (error) {
-    resetForm();
-  }
-
-  applyTheme(themeSelect.value);
-}
-
-
-function initHelp() {
-  const menuButton = document.getElementById('help');
-  const view = document.getElementById('view-help');
-  const customerView = document.getElementById('view-customer');
-  const backButton = document.getElementById('help-back');
-  const search = document.getElementById('help-search');
-  const list = document.getElementById('help-faq-list');
-  const empty = document.getElementById('help-empty');
-  const resultCount = document.getElementById('help-result-count');
-  const userMenu = document.getElementById('user-menu');
-
-  if (!menuButton || !view || !customerView || !list) return;
-
-  let activeCategory = 'all';
-
-  const faqs = [
-    { category: 'booking', question: 'Làm thế nào để đặt vé xem phim?', answer: 'Chọn phim, chọn rạp và suất chiếu, chọn ghế còn trống, sau đó kiểm tra thông tin và làm theo hướng dẫn xác nhận đặt vé trên hệ thống.' },
-    { category: 'booking', question: 'Làm sao để xem lại vé đã đặt?', answer: 'Mở menu tài khoản và chọn Vé của tôi. Nếu hệ thống đã tích hợp dữ liệu đặt vé, các vé tương ứng sẽ được hiển thị tại đây.' },
-    { category: 'booking', question: 'Tôi chọn nhầm suất chiếu thì phải làm sao?', answer: 'Hãy kiểm tra chính sách thay đổi hoặc hủy vé của rạp. Nếu không có tùy chọn phù hợp trên hệ thống, bạn nên liên hệ bộ phận hỗ trợ chính thức trước giờ chiếu.' },
-    { category: 'booking', question: 'Sau khi đặt vé thành công, tôi cần làm gì?', answer: 'Kiểm tra lại phim, rạp, ngày giờ, ghế và thông tin xác nhận. Khi đến rạp, hãy làm theo hướng dẫn nhận vé được cung cấp trong đơn đặt chỗ.' },
-    { category: 'payment', question: 'Tôi có thể thanh toán bằng cách nào?', answer: 'Các phương thức thanh toán phụ thuộc vào chức năng được triển khai trên website. Vui lòng kiểm tra những lựa chọn hiển thị tại bước thanh toán.' },
-    { category: 'payment', question: 'Tôi đã thanh toán nhưng chưa thấy xác nhận?', answer: 'Kiểm tra trạng thái đơn đặt vé và thông báo giao dịch. Nếu khoản thanh toán đã được ghi nhận nhưng đơn chưa cập nhật, hãy lưu thông tin giao dịch và liên hệ bộ phận hỗ trợ chính thức.' },
-    { category: 'account', question: 'Làm thế nào để chỉnh sửa thông tin cá nhân?', answer: 'Mở menu tài khoản, chọn Thông tin tài khoản và cập nhật các trường được phép chỉnh sửa. Khả năng lưu dữ liệu phụ thuộc vào việc website đã kết nối backend hay chưa.' },
-    { category: 'account', question: 'Tôi quên mật khẩu thì phải làm sao?', answer: 'Chọn chức năng Quên mật khẩu trên trang đăng nhập và làm theo hướng dẫn. Nếu chức năng chưa được triển khai, hãy liên hệ quản trị viên hệ thống.' },
-    { category: 'promotion', question: 'Làm thế nào để sử dụng mã ưu đãi?', answer: 'Kiểm tra điều kiện, thời hạn và giá trị đơn hàng tối thiểu của mã. Nhập mã tại bước thanh toán nếu hệ thống có hỗ trợ ô áp dụng ưu đãi.' },
-    { category: 'promotion', question: 'Vì sao mã ưu đãi không sử dụng được?', answer: 'Mã có thể đã hết hạn, đã được sử dụng, không đáp ứng giá trị đơn hàng tối thiểu hoặc không áp dụng cho suất chiếu đang chọn. Hãy kiểm tra điều kiện của mã.' }
-  ];
-
-  function renderFaqs() {
-    const keyword = search.value.trim().toLowerCase();
-
-    const filtered = faqs.filter(item => {
-      const matchesCategory = activeCategory === 'all' || item.category === activeCategory;
-      const matchesKeyword = `${item.question} ${item.answer}`.toLowerCase().includes(keyword);
-      return matchesCategory && matchesKeyword;
-    });
-
-    list.replaceChildren();
-    empty.hidden = filtered.length > 0;
-    resultCount.textContent = `${filtered.length} câu hỏi`;
-
-    filtered.forEach(item => {
-      const details = document.createElement('details');
-      details.className = 'help-faq-item';
-
-      const summary = document.createElement('summary');
-      summary.textContent = item.question;
-
-      const answer = document.createElement('div');
-      answer.className = 'help-faq-answer';
-      answer.textContent = item.answer;
-
-      details.append(summary, answer);
-      list.appendChild(details);
-    });
-  }
-
-  menuButton.addEventListener('click', () => {
-    if (userMenu) userMenu.classList.remove('active');
-    customerView.classList.remove('active');
-    view.classList.add('active');
-    renderFaqs();
-  });
-
-  backButton?.addEventListener('click', () => {
-    view.classList.remove('active');
-    customerView.classList.add('active');
-  });
-
-  search.addEventListener('input', renderFaqs);
-
-  document.querySelectorAll('[data-help-category]').forEach(button => {
-    button.addEventListener('click', () => {
-      activeCategory = button.dataset.helpCategory;
-      document.querySelectorAll('[data-help-category]').forEach(categoryButton => {
-        categoryButton.classList.remove('active');
-      });
-      button.classList.add('active');
-      renderFaqs();
-    });
-  });
-
-  renderFaqs();
 }
