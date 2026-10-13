@@ -1,7 +1,36 @@
 'use strict';
+
+// 1. Biến toàn cục hệ thống
+window.DB = window.DB || {
+  movies: [],
+  showtimes: [],
+  cinemas: [],
+  rooms: [],
+  combos: [],
+  promos: [],
+  customers: [],
+  orders: [],
+  staff: []
+};
+
+window.S = window.S || { pos: { show: null, sel: [], paid: false } };
+window.CTX = window.CTX || { cust: null, staff: null };
+
+// 2. Các hàm tiện ích dùng chung
+window.esc = window.esc || function(s) {
+  if (s === null || s === undefined) return '';
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+};
+
+window.norm = window.norm || function(s) {
+  return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+};
+
+window.pad2 = window.pad2 || function(n) { return String(n).padStart(2, '0'); };
+window.fmt = window.fmt || function(n) { return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n || 0); };
+
 const fmt = n => n.toLocaleString('vi-VN') + 'đ';
-const $ = (s, r = document) => r.querySelector(s);
-const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const $ = (s, r = document) => r.querySelector(s); const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const img = (id, w = 600) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=${w}&q=80`;
 
@@ -71,8 +100,7 @@ const poster = m => {
 
 /* ================= KHỞI TẠO ================= */
 document.addEventListener('DOMContentLoaded', async () => {
-  // Ưu tiên dữ liệu thật từ API; nếu backend/DB chưa sẵn sàng thì giữ giao diện mẫu,
-  // nhưng thao tác thanh toán vẫn bắt buộc phải khớp suất/ghế tồn tại trong database.
+  // Tải danh mục thực tế từ backend qua API client
   await loadPublicCatalog();
   initRoles(); initNav(); initHero(); initMovies(); initShowtimes(); initStatic();
   initModal(); initDetail(); initPOS(); initAdmin();
@@ -82,14 +110,20 @@ async function loadPublicCatalog() {
   const fallbackMovies = MOVIES.slice();
   const fallbackCinemas = CINEMAS.slice();
   try {
-    const [movieRows, cinemaRows, showRows] = await Promise.all([API.get('movies'), API.get('cinemas'), API.get('shows')]);
+    // Gọi API qua API client chung[cite: 1]
+    const [movieRows, showRows] = await Promise.all([
+      API.layDanhSachPhim().catch(() => null),
+      API.layDanhSachSuatChieu().catch(() => null)
+    ]);
+
     LIVE_SHOWS = Array.isArray(showRows) ? showRows : [];
+
     if (Array.isArray(movieRows) && movieRows.length) {
       MOVIES = movieRows.map((row, index) => {
         const title = String(row.tenPhim || '').trim();
         const existing = fallbackMovies.find(m => norm(m.t) === norm(title)) || fallbackMovies[index % fallbackMovies.length];
         const status = norm(String(row.trangThai || ''));
-        const posterValue = String(row.poster || '').trim();
+        const posterValue = String(row.poster || row.hinhAnh || '').trim();
         return {
           ...existing,
           id: String(row.maPhim || existing.id),
@@ -105,30 +139,21 @@ async function loadPublicCatalog() {
         };
       });
     }
-    if (Array.isArray(cinemaRows) && cinemaRows.length) {
-      CINEMAS = cinemaRows.map((row, index) => {
-        const existing = fallbackCinemas[index % fallbackCinemas.length];
-        return {
-          ...existing,
-          id: String(row.maRap || existing.id),
-          n: String(row.tenRap || existing.n),
-          a: String(row.diaChi || existing.a),
-          rooms: existing.rooms,
-          fm: existing.fm,
-          room: existing.room
-        };
-      });
-    }
-    // Đồng bộ lựa chọn mặc định với danh mục mới.
+
     const firstMovie = MOVIES.find(m => m.st === 'now') || MOVIES[0];
     if (firstMovie) S.show.m = firstMovie;
     if (CINEMAS.length) S.show.cin = CINEMAS[0];
   } catch (error) {
-    console.warn('Không tải được danh mục API; tiếp tục hiển thị giao diện mẫu:', error.message);
+    console.warn('Chuyển sang dữ liệu mẫu do chưa kết nối được danh mục:', error.message);
   }
-  // Tải combo và khuyến mãi độc lập để một API lỗi không làm mất các danh mục còn lại.
+
+  // Tải Combo và Khuyến mãi từ API
   try {
-    const [comboResult, promoResult] = await Promise.allSettled([API.get('combos'), API.get('promotions')]);
+    const [comboResult, promoResult] = await Promise.allSettled([
+      API.layDanhSachCombo(),
+      API.layDanhSachKhuyenMai()
+    ]);
+
     if (comboResult.status === 'fulfilled' && Array.isArray(comboResult.value) && comboResult.value.length) {
       const apiCombos = comboResult.value;
       const nextCombos = apiCombos.map((row, index) => {
@@ -148,6 +173,7 @@ async function loadPublicCatalog() {
       S.combos = Object.fromEntries(nextCombos.map(c => [c.id, 0]));
       S.pos.combos = Object.fromEntries(nextCombos.map(c => [c.id, 0]));
     }
+
     if (promoResult.status === 'fulfilled' && Array.isArray(promoResult.value)) {
       const localNow = new Date();
       const now = `${localNow.getFullYear()}-${String(localNow.getMonth() + 1).padStart(2, '0')}-${String(localNow.getDate()).padStart(2, '0')}`;
@@ -173,7 +199,7 @@ async function loadPublicCatalog() {
       if (S.promo && !PROMOS[S.promo]) S.promo = null;
     }
   } catch (error) {
-    console.warn('Không tải được combo/khuyến mãi từ API:', error.message);
+    console.warn('Chưa tải được combo/khuyến mãi từ API:', error.message);
   }
 }
 
@@ -188,7 +214,7 @@ function initRoles() {
 }
 
 function initNav() {
-  const nav = $('.cinematic-nav'); const links = $$('.nav-link'), secs = links.map(l =>$(l.getAttribute('href')));
+  const nav = $('.cinematic-nav'); const links =$$('.nav-link'), secs = links.map(l =>$(l.getAttribute('href')));
   const on = () => {
     nav.classList.toggle('scrolled', scrollY > 40);
     let cur = 0; secs.forEach((s, i) => { if (s && s.getBoundingClientRect().top < innerHeight * .4) cur = i; });
@@ -221,7 +247,7 @@ function showHero(i) {
   const token = ++heroToken, bg = $('#hero-backdrop'), box = $('#hero-content');
   const pre = new Image(); pre.src = img(heroList[i].bd, 1920);
   const go = () => {
-    if (token !== heroToken) return;            // đã có yêu cầu mới hơn
+    if (token !== heroToken) return;
     box.classList.add('fading'); bg.classList.add('fading');
     setTimeout(() => {
       if (token !== heroToken) return;
@@ -293,6 +319,7 @@ function initShowtimes() {
   };
   renderShowtimes();
 }
+
 function renderShowtimes() {
   const now = new Date(), isToday = S.stDate === DATES[0].k, nowStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
   if (LIVE_SHOWS.length) {
@@ -330,6 +357,7 @@ function renderShowtimes() {
     return `<div class="st-row"><div class="st-movie">${poster(m)}<div><h3>${m.t}</h3><p>${m.d} · ${m.fm.join(' / ')} · ${m.age}</p></div></div><div class="st-cins">${rows || '<p class="muted">Không có suất ở rạp này.</p>'}</div></div>`;
   }).join('');
 }
+
 function initStatic() {
   $('#cinema-grid').innerHTML = CINEMAS.map(c => `<article class="cinema-card"><h3>${c.n}</h3><p>${c.a}</p><div class="cin-meta"><span>${c.rooms} phòng chiếu</span>${c.fm.map(f => `<span class="tag">${f}</span>`).join('')}</div><button class="btn-glass" data-c="${c.id}">Xem lịch chiếu</button></article>`).join('');
   $('#cinema-grid').onclick = e => { const b = e.target.closest('[data-c]'); if (!b) return; S.stCin = b.dataset.c; $$('#st-cinemas .pill').forEach(x => x.classList.toggle('active', x.dataset.c === S.stCin)); renderShowtimes(); $('#showtimes').scrollIntoView({ behavior: 'smooth' }); };
@@ -339,7 +367,7 @@ function initStatic() {
 
 function drawSeats(el, sold, selected, onToggle, liveData = null) {
   if (liveData) {
-    const available = Array.isArray(liveData.available) ? liveData.available : [];
+    const available = Array.isArray(liveData.available) ? liveData.available : (Array.isArray(liveData) ? liveData : []);
     const soldRows = Array.isArray(liveData.sold) ? liveData.sold : [];
     const all = [...available.map(seat => ({ ...seat, _sold: false })), ...soldRows.map(seat => ({ ...seat, _sold: true }))];
     if (!all.length) {
@@ -405,6 +433,7 @@ function initModal() {
   $('#combo-grid').onclick = e => { const b = e.target.closest('[data-d]'); if (b) changeCombo(b.dataset.id, +b.dataset.d); };
   renderPromoList(); renderCombos();
 }
+
 function openBooking(movie, o = {}) {
   const key0 = showKey(S.show);
   const next = { m: movie, date: o.date || S.stDate, cin: o.cin || CINEMAS.find(c => c.fm.some(f => movie.fm.includes(f))) || CINEMAS[0], time: o.time || '19:30', apiShow: o.apiShow || null };
@@ -417,13 +446,14 @@ function openBooking(movie, o = {}) {
   const loadToken = ++S.seatLoadToken;
   S.apiSeatData = null;
   $('#booking-modal').classList.add('active'); document.body.classList.add('modal-open');
+
   if (next.apiShow) {
     $('#seat-matrix').innerHTML = '<p class="muted seat-empty">Đang tải sơ đồ ghế từ hệ thống…</p>';
-    RapPhimAPI.seatsForShow(next.apiShow.maSuat).then(data => {
+    // Gọi API lấy danh sách ghế trống theo suất chiếu qua API Client[cite: 1]
+    API.layGheTrongTheoSuat(next.apiShow.maSuat).then(data => {
       if (loadToken !== S.seatLoadToken || S.show !== next) return;
       S.apiSeatData = data && typeof data === 'object' ? data : { available: [], sold: [] };
-      // Bỏ lựa chọn cũ không còn thuộc sơ đồ ghế của suất hiện tại.
-      const all = [...(S.apiSeatData.available || []), ...(S.apiSeatData.sold || [])];
+      const all = [...(S.apiSeatData.available || (Array.isArray(S.apiSeatData) ? S.apiSeatData : [])), ...(S.apiSeatData.sold || [])];
       S.sel = S.sel.filter(sel => all.some(seat => String(seat.soGhe) === String(sel.id)) && !(S.apiSeatData.sold || []).some(seat => String(seat.soGhe) === String(sel.id)));
       drawSeats($('#seat-matrix'), new Set(), S.sel, update, S.apiSeatData); update();
     }).catch(error => {
@@ -437,7 +467,8 @@ function openBooking(movie, o = {}) {
   }
   setStep(1, true); update();
 }
-function closeModal() { $('#booking-modal').classList.remove('active'); if ($('#detail').hidden) document.body.classList.remove('modal-open'); }  function setStep(n, first) { const dir = n >= S.step ? 'from-r' : 'from-l'; S.step = n; $$('.step-pane').forEach(p => p.classList.remove('active', 'from-r', 'from-l'));
+
+function closeModal() { $('#booking-modal').classList.remove('active'); if ($('#detail').hidden) document.body.classList.remove('modal-open'); } function setStep(n, first) { const dir = n >= S.step ? 'from-r' : 'from-l'; S.step = n; $$('.step-pane').forEach(p => p.classList.remove('active', 'from-r', 'from-l'));
   const target = $('#pane-step-' + n);
   if (target) { target.classList.add('active', dir); }
 }

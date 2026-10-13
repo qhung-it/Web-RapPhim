@@ -16,13 +16,16 @@ const showStart = o => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 const chip = b => `<span class="chip ${b[1]}">${b[0]}</span>`;
+
 function ordBadge(o) {
   if (isCanceled(o)) return ['Đã hủy', 'muted'];
   if (isPaid(o)) return ['Đã thanh toán', 'success'];
   if (/chothanhtoan|cho_thanh_toan|pending/.test(orderStatus(o))) return ['Chờ thanh toán', 'pending'];
   return [o.trangThai || 'Đang xử lý', 'muted'];
 }
+
 function canCancel(o) { return !isCanceled(o) && !isPaid(o) && /chothanhtoan|cho_thanh_toan|pending/.test(orderStatus(o)); }
+
 function filteredOrders(filter) {
   const now = Date.now();
   const predicate = {
@@ -33,11 +36,15 @@ function filteredOrders(filter) {
   }[filter] || (() => true);
   return remoteOrders.filter(predicate);
 }
+
 async function loadCustomerOrders() {
-  const data = await RapPhimAPI.customerHistory();
+  if (!CTX.user || !CTX.user.id) return [];
+  // Gọi API lấy danh sách đơn đặt vé theo mã khách hàng qua API Client
+  const data = await API.layDonTheoKhachHang(CTX.user.id);
   remoteOrders = Array.isArray(data) ? data : (data.orders || []);
   return remoteOrders;
 }
+
 async function openOrders(filter) {
   ordFilter = filter || ordFilter;
   cxOpen('<h2>Đang tải lịch sử đặt vé…</h2><p class="cx-sub">Đang lấy dữ liệu từ máy chủ.</p>', true);
@@ -51,11 +58,16 @@ async function openOrders(filter) {
     cxOpen(`<h2>Lịch sử đặt vé</h2><div class="cx-empty"><p>${esc(error.message || 'Không tải được lịch sử đặt vé.')}</p><button class="btn-glass" data-acct="history">Thử lại</button></div>`, true);
   }
 }
+
 async function openOrder(id) {
   let o = remoteOrders.find(x => orderId(x) === id);
   if (!o) {
-    try { o = await RapPhimAPI.order(id); }
-    catch (error) { return toast(error.message || 'Không tải được chi tiết đơn hàng.'); }
+    try {
+      // Gọi API lấy chi tiết đơn qua API Client
+      o = await API.layChiTietDon(id);
+    } catch (error) {
+      return toast(error.message || 'Không tải được chi tiết đơn hàng.');
+    }
   }
   if (!o) return toast('Không tìm thấy đơn hàng.');
   const b = ordBadge(o), cancelable = canCancel(o);
@@ -66,14 +78,17 @@ async function openOrder(id) {
     <div class="cx-actions">${cancelable ? `<button class="btn-danger" data-acct="cancel" data-id="${esc(orderId(o))}">Hủy đơn</button>` : ''}</div>
     ${cancelable ? '<small class="cx-hint">Đơn chỉ có thể hủy khi chưa thanh toán và còn ở trạng thái chờ thanh toán.</small>' : ''}`, true);
 }
+
 function openProfile() {
   const u = CTX.user, t = tierOf(u.tier);
   cxOpen(`<h2>Thông tin tài khoản</h2><p class="cx-sub">Hạng: <strong>${esc(t.n)}</strong>${t.pct ? ` · ưu đãi ${t.pct}%` : ''}</p>
     <form data-form="profile" novalidate>${fld('n', 'Họ và tên', 'text', `value="${esc(u.n)}"`)}${fld('email', 'Email', 'email', `value="${esc(u.email)}"`)}${fld('phone', 'Số điện thoại', 'tel', `value="${esc(u.phone)}" maxlength="10"`)}${fld('dob', 'Ngày sinh', 'date', `value="${esc(u.dob || '')}"`)}<p class="form-err" role="alert"></p><button class="btn-primary-gold btn-large">Lưu thay đổi</button></form>`);
 }
+
 function openPw() {
   cxOpen(`<h2>Đổi mật khẩu</h2><form data-form="pw" novalidate>${fld('old', 'Mật khẩu hiện tại', 'password')}${fld('pw', 'Mật khẩu mới', 'password')}${fld('pw2', 'Nhập lại mật khẩu mới', 'password')}<p class="form-err" role="alert"></p><button class="btn-primary-gold btn-large">Đổi mật khẩu</button></form>`);
 }
+
 Object.assign(FORMS, {
   async profile(f) {
     const u = CTX.user, n = val(f, 'n'), email = val(f, 'email').toLowerCase(), phone = val(f, 'phone');
@@ -81,8 +96,9 @@ Object.assign(FORMS, {
     if (!emailOk(email)) return 'Email không hợp lệ.';
     if (!phoneOk(phone)) return 'Số điện thoại gồm 10 chữ số, bắt đầu bằng 0.';
     try {
-      const result = await RapPhimAPI.updateProfile({ hoTen: n, email, soDienThoai: phone, ngaySinh: val(f, 'dob') || null });
-      const uDto = result.user || {};
+      // Gọi API cập nhật thông tin cá nhân
+      const result = await API.post('auth/update-profile', { maKH: u.id, hoTen: n, email, soDienThoai: phone, ngaySinh: val(f, 'dob') || null });
+      const uDto = result.user || result || {};
       Object.assign(u, { n: uDto.hoTen || n, email: uDto.email || email, phone: uDto.soDienThoai || phone, dob: uDto.ngaySinh || val(f, 'dob') });
       renderAcct(); cxClose(); toast('Đã cập nhật thông tin'); return '';
     } catch (error) { return error.message || 'Không thể cập nhật hồ sơ.'; }
@@ -90,7 +106,11 @@ Object.assign(FORMS, {
   async pw(f) {
     if (f.elements.pw.value.length < 6) return 'Mật khẩu mới tối thiểu 6 ký tự.';
     if (f.elements.pw.value !== f.elements.pw2.value) return 'Mật khẩu nhập lại không khớp.';
-    try { await RapPhimAPI.changePassword(f.elements.old.value, f.elements.pw.value); cxClose(); toast('Đã đổi mật khẩu'); return ''; }
+    try {
+      // Gọi API đổi mật khẩu
+      await API.post('auth/change-password', { maKH: CTX.user?.id, matKhauCu: f.elements.old.value, matKhauMoi: f.elements.pw.value });
+      cxClose(); toast('Đã đổi mật khẩu'); return '';
+    }
     catch (error) { return error.message || 'Không thể đổi mật khẩu.'; }
   }
 });
@@ -110,14 +130,20 @@ document.addEventListener('DOMContentLoaded', () => {
     else if (act === 'profile') openProfile();
     else if (act === 'pw') openPw();
     else if (act === 'logout') {
-      try { await RapPhimAPI.logoutCustomer(); } catch (error) { return toast(error.message || 'Không thể đăng xuất khỏi máy chủ.'); }
+      try {
+        // Gọi API đăng xuất
+        await API.post('auth/logout').catch(() => {});
+      } catch (error) {
+        return toast(error.message || 'Không thể đăng xuất khỏi máy chủ.');
+      }
       CTX.user = null; remoteOrders = []; renderAcct(); closeModal(); closeDetail(); cxClose(); toast('Đã đăng xuất');
     } else if (act === 'cancel') {
       const id = a.dataset.id, o = remoteOrders.find(x => orderId(x) === id);
       if (!o || !canCancel(o)) return toast('Đơn này không thể hủy.');
       a.disabled = true;
       try {
-        await RapPhimAPI.cancelOrder(id);
+        // Gọi API hủy đơn hàng qua API Client
+        await API.huyDon(id);
         await loadCustomerOrders();
         toast(`Đã gửi yêu cầu hủy đơn ${id}.`);
         openOrder(id);

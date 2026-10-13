@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="0992ceac-9e9d-41ca-aad3-dcbc4decdb39" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.smarttomcat/App-RapPhim/conf/catalina.policy" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.smarttomcat/App-RapPhim/conf/catalina.properties" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.smarttomcat/App-RapPhim/conf/context.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.smarttomcat/App-RapPhim/conf/jaspic-providers.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.smarttomcat/App-RapPhim/conf/jaspic-providers.xsd" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.smarttomcat/App-RapPhim/conf/logging.properties" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.smarttomcat/App-RapPhim/conf/server.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.smarttomcat/App-RapPhim/conf/tomcat-users.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.smarttomcat/App-RapPhim/conf/tomcat-users.xsd" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.smarttomcat/App-RapPhim/conf/web.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/ComboController.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/DonDatVeController.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/GheController.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/KhuyenMaiController.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/NhanVienController.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/PhimController.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/SuatChieuController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/.gitignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/BanVeController.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/ChiTietPhimController.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/ChonComboController.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/ChonGheController.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/DangKyController.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/DangNhapController.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/KhachHangController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/KhachHangController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/KiemTraVeController.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/QuanLyComboController.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/QuanLyDonDatVeController.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/QuanLyGheController.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/QuanLyKhachHangController.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/QuanLyKhuyenMaiController.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/QuanLyLoaiKhachHangController.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/QuanLyNhanVienController.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/QuanLyPhimController.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/QuanLyPhongChieuController.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/QuanLyRapController.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/QuanLySuatChieuController.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/QuenMatKhauController.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/TaiKhoanKhachHangController.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/ThanhToanController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/ThanhToanController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/ThongKeDoanhThuController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/ThongKeDoanhThuController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/TrangChuKhachHangController.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/TrangChuNhanVienController.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/XacNhanDonController.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/web/ApiServlet.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/web/ApiServlet.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/webapp/account.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/webapp/account.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/webapp/admin-pro.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/webapp/admin-pro.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/webapp/api-client.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/webapp/api-client.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/webapp/api-integration.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/webapp/api-integration.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/webapp/auth.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/webapp/auth.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/webapp/features.css" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/webapp/features.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/webapp/indexcnm.html" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/webapp/indexcnm.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/webapp/movies-ext.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/webapp/movies-ext.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/webapp/scriptcnm.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/webapp/scriptcnm.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/webapp/staff-pro.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/webapp/staff-pro.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/webapp/store.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/webapp/store.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/webapp/stylecnm.css" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/webapp/stylecnm.css" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Class" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="LogFilters">
+    <option name="FILTER_ERRORS" value="false" />
+    <option name="FILTER_WARNINGS" value="false" />
+    <option name="FILTER_INFO" value="true" />
+    <option name="FILTER_DEBUG" value="true" />
+    <option name="CUSTOM_FILTER" />
+  </component>
+  <component name="MavenImportPreferences">
+    <option name="generalSettings">
+      <MavenGeneralSettings>
+        <option name="mavenHomeTypeForPersistence" value="WRAPPER" />
+      </MavenGeneralSettings>
+    </option>
+  </component>
+  <component name="ProjectColorInfo"><![CDATA[{
+  "customColor": "",
+  "associatedIndex": 7
+}]]></component>
+  <component name="ProjectId" id="3KduFyESOZa9fEQndixs46ETR28" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Application.TestDatabase.executor": "Run",
+    "Maven.App-RapPhim [clean].executor": "Run",
+    "Maven.App-RapPhim [package].executor": "Run",
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "Smart Tomcat.Unnamed.executor": "Run",
+    "git-widget-placeholder": "feature/controller",
+    "kotlin-language-version-configured": "true",
+    "last_opened_file_path": "D:/A LÂM/CNPM/Project ck/Web-RapPhim",
+    "settings.editor.selected.configurable": "com.poratu.idea.plugins.tomcat.setting.TomcatServersConfigurable"
+  }
+}]]></component>
+  <component name="RunManager" selected="Smart Tomcat.Unnamed">
+    <configuration name="TestDatabase" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
+      <option name="MAIN_CLASS_NAME" value="com.example.studentapp.apprapphim.TestDatabase" />
+      <module name="App-RapPhim" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="com.example.studentapp.apprapphim.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration default="true" type="JetRunConfigurationType">
+      <module name="Web-RapPhim" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="Unnamed" type="com.poratu.idea.plugins.tomcat" nameIsGenerated="true">
+      <predefined_log_file enabled="true" id="Tomcat Localhost Log" />
+      <predefined_log_file enabled="true" id="Tomcat Access Log" />
+      <predefined_log_file id="Tomcat Catalina Log" />
+      <predefined_log_file id="Tomcat Manager Log" />
+      <predefined_log_file id="Tomcat Host Manager Log" />
+      <option name="catalinaBase" value="C:\Users\ADMIN\.SmartTomcat\Web-RapPhim\App-RapPhim" />
+      <option name="contextPath" value="/" />
+      <option name="docBase" value="$PROJECT_DIR$/src/main/webapp" />
+      <option name="envOptions">
+        <map />
+      </option>
+      <option name="extraClassPath" value="" />
+      <option name="tomcatInfo">
+        <TomcatInfo>
+          <option name="name" value="Apache Tomcat/9.0.121" />
+          <option name="path" value="$USER_HOME$/Downloads/apache-tomcat-9.0.121-windows-x64/apache-tomcat-9.0.121" />
+          <option name="version" value="9.0.121.0" />
+        </TomcatInfo>
+      </option>
+      <option name="vmOptions" value="" />
+      <module name="App-RapPhim" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <list>
+      <item itemvalue="Application.TestDatabase" />
+      <item itemvalue="Smart Tomcat.Unnamed" />
+    </list>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Application.TestDatabase" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="0992ceac-9e9d-41ca-aad3-dcbc4decdb39" name="Changes" comment="" />
+      <created>1791899666868</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1791899666868</updated>
+    </task>
+    <servers />
+  </component>
+</project>
