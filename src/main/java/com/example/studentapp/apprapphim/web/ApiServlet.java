@@ -339,7 +339,7 @@ public class ApiServlet extends HttpServlet {
         Ve first=safe(()->x.getDanhSachVe().isEmpty()?null:x.getDanhSachVe().get(0));
         SuatChieu show=first==null?null:safe(first::getSuatChieu);
         PhongChieu room=show==null?null:safe(show::getPhongChieu);
-        List<String> seatNumbers=safe(()->x.getDanhSachVe().stream().map(v->safe(()->v.getGhe().getSoGhe())).filter(Objects::nonNull).toList());
+        List<String> seatNumbers = safe(() -> x.getDanhSachVe().stream().map(v -> safe(() -> String.valueOf(v.getGhe().getSoGhe()))).filter(Objects::nonNull).toList());
         return map("maDon",x.getMaDon(),"id",x.getMaDon(),"ngayDat",x.getNgayDat(),"tongTien",x.getTongTien(),"tienGiam",x.getTienGiam(),"trangThai",x.getTrangThai(),"maKH",safe(()->x.getKhachHang().getMaKH()),"maNV",safe(()->x.getNhanVien().getMaNV()),"maKM",safe(()->x.getKhuyenMai().getMaKM()),"soVe",safe(()->x.getDanhSachVe().size()),"tenPhim",show==null?null:safe(()->show.getPhim().getTenPhim()),"maSuat",show==null?null:show.getMaSuat(),"ngayChieu",show==null?null:show.getNgayChieu(),"gioBatDau",show==null?null:show.getGioBatDau(),"tenPhong",room==null?null:room.getTenPhong(),"tenRap",room==null?null:safe(()->room.getRap().getTenRap()),"ghe",seatNumbers,"phuongThuc",safe(()->x.getThanhToan().getPhuongThuc()),"trangThaiThanhToan",safe(()->x.getThanhToan().getTrangThai()));
     }
     private Map<String,Object> paymentDto(ThanhToan x){if(x==null)return null;return map("maTT",x.getMaTT(),"thoiGian",x.getThoiGian(),"soTien",x.getSoTien(),"phuongThuc",x.getPhuongThuc(),"trangThai",x.getTrangThai(),"maDon",safe(()->x.getDonDatVe().getMaDon()));}
