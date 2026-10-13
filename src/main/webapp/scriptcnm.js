@@ -63,6 +63,10 @@ function toast(msg) {
 }
 const poster = m => `<img src="${img(m.p)}" alt="${m.t}" loading="lazy" onerror="this.classList.add('img-fail')">`;
 
+document.documentElement.dataset.theme =
+    localStorage.getItem('viecent-theme') || 'dark';
+document.documentElement.dataset.motion =
+    localStorage.getItem('viecent-motion') || 'on';
 /* ================= KHỞI TẠO ================= */
 document.addEventListener('DOMContentLoaded', () => {
   initRoles(); initNav(); initHero(); initMovies(); initShowtimes(); initStatic();
@@ -650,3 +654,18 @@ function renderAdmin() {
     <div class="adm-table-card"><h3>Doanh thu theo phim</h3>${byMovie.map(b => `<div class="bar-row"><span>${b.t}</span><div class="bar-track"><i style="width:${b.v / tot * 220}%"></i></div><b>${Math.round(b.v / tot * 100)}%</b></div>`).join('')}</div></section>
   <div class="adm-table-card"><h3>Giao dịch gần đây</h3><div class="adm-scroll">${table(['Mã đơn', 'Phim', 'Rạp', 'Suất', 'Ghế', 'Tổng tiền', 'Trạng thái'], DB.orders.slice(0, 5).map(o => [`<code>${esc(o.code)}</code>`, `<strong>${esc(o.movie)}</strong>`, esc(o.cin), esc(o.time), esc(o.seats), fmt(Number(o.total) || 0), badge(...stLab[o.st] || stLab.wait)]))}</div></div>`;
 }
+
+
+
+/* MENU DI ĐỘNG VIECENT */
+(() => {
+  const menuButton = document.getElementById('mobile-menu-toggle');
+  const mobileNav = document.getElementById('mobile-nav');
+  if (!menuButton || !mobileNav) return;
+  function setMenuOpen(isOpen) { mobileNav.classList.toggle('is-open', isOpen); menuButton.setAttribute('aria-expanded', String(isOpen)); menuButton.setAttribute('aria-label', isOpen ? 'Đóng menu điều hướng' : 'Mở menu điều hướng'); }
+  menuButton.addEventListener('click', () => { setMenuOpen(menuButton.getAttribute('aria-expanded') !== 'true'); });
+  mobileNav.addEventListener('click', (event) => { if (event.target.closest('a')) setMenuOpen(false); });
+  document.addEventListener('keydown', (event) => { if (event.key === 'Escape') setMenuOpen(false); });
+  document.addEventListener('click', (event) => { if (!mobileNav.contains(event.target) && !menuButton.contains(event.target)) setMenuOpen(false); });
+  window.addEventListener('resize', () => { if (window.innerWidth > 1024) setMenuOpen(false); });
+})();

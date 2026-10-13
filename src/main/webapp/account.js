@@ -36,6 +36,87 @@ function openProfile() {
 function openPw() {
   cxOpen(`<h2>Đổi mật khẩu</h2><form data-form="pw" novalidate>${fld('old', 'Mật khẩu hiện tại', 'password')}${fld('pw', 'Mật khẩu mới', 'password')}${fld('pw2', 'Nhập lại mật khẩu mới', 'password')}<p class="form-err" role="alert"></p><button class="btn-primary-gold btn-large">Đổi mật khẩu</button></form>`);
 }
+function openPromotions() {
+  console.log('Đã gọi openPromotions');
+
+  cxOpen(`
+    <h2>Ưu đãi của tôi</h2>
+    <p class="cx-sub">Khám phá các ưu đãi dành riêng cho thành viên VIECENT.</p>
+    <div class="cx-empty">
+      <p>🎟️</p>
+      <h3>Chưa có ưu đãi nào</h3>
+      <p>Ưu đãi dành cho tài khoản của bạn sẽ xuất hiện tại đây.</p>
+    </div>
+  `);
+}
+function openFavorites() {
+  cxOpen(`
+    <h2>Phim yêu thích</h2>
+    <p class="cx-sub">Danh sách phim bạn yêu thích tại VIECENT.</p>
+    <div class="cx-empty">
+      <p>❤️</p>
+      <h3>Chưa có phim yêu thích</h3>
+      <p>Những bộ phim bạn đánh dấu yêu thích sẽ xuất hiện tại đây.</p>
+    </div>
+  `);
+}
+function openNotifications() {
+  cxOpen(`
+    <h2>Thông báo</h2>
+    <p class="cx-sub">Cập nhật thông tin và hoạt động mới nhất từ VIECENT.</p>
+    <div class="cx-empty">
+      <p>🔔</p>
+      <h3>Bạn chưa có thông báo nào</h3>
+      <p>Các thông báo về vé, lịch chiếu và ưu đãi sẽ xuất hiện tại đây.</p>
+    </div>
+  `);
+}
+
+function openSettings() {
+  const isLight = document.documentElement.dataset.theme === 'light';
+  const motionOn = document.documentElement.dataset.motion !== 'off';
+
+  cxOpen(`
+    <h2>Cài đặt</h2>
+    <p class="cx-sub">Cá nhân hóa trải nghiệm xem phim tại VIECENT.</p>
+    <div class="cx-list">
+      <div class="cx-order">
+        <div><strong>Giao diện</strong><span>Chọn giao diện phù hợp với bạn.</span></div>
+        <button type="button" class="btn-glass" data-theme-toggle>${isLight ? '☀️ Sáng' : '🌙 Tối'}</button>
+      </div>
+      <div class="cx-order cx-motion-setting">
+        <div>
+          <strong>Tốc độ chuyển động</strong>
+          <span>Điều chỉnh tốc độ hiệu ứng trên website.</span>
+        </div>
+        <div class="cx-speed-control">
+          <input type="range" min="1" max="3" step="1" value="${Number(localStorage.getItem('viecent-motion-speed')) || 2}" data-motion-speed>
+          <div class="cx-speed-labels"><span>Chậm</span><span>Bình thường</span><span>Nhanh</span></div>
+        </div>
+      </div>
+      <div class="cx-order">
+        <div><strong>Ngôn ngữ</strong><span>Ngôn ngữ hiển thị trên website.</span></div>
+        <span class="chip">Tiếng Việt</span>
+      </div>
+    </div>
+  `);
+}
+
+
+function openHelp() {
+  cxOpen(`
+    <h2>Trợ giúp</h2>
+    <p class="cx-sub">Hướng dẫn sử dụng dịch vụ tại VIECENT.</p>
+    <div class="cx-list">
+      <div class="cx-order"><div><strong>🎬 Đặt vé xem phim</strong><span>Chọn phim, suất chiếu, ghế ngồi và xác nhận đơn đặt vé.</span></div></div>
+      <div class="cx-order"><div><strong>💳 Thanh toán</strong><span>Kiểm tra phương thức thanh toán và tổng tiền trước khi xác nhận.</span></div></div>
+      <div class="cx-order"><div><strong>🎟️ Quản lý vé</strong><span>Vào mục Vé của tôi để xem thông tin vé và trạng thái đơn hàng.</span></div></div>
+      <div class="cx-order"><div><strong>👤 Tài khoản</strong><span>Vào Thông tin tài khoản để cập nhật hồ sơ cá nhân.</span></div></div>
+    </div>
+    <p class="cx-sub">Nếu gặp lỗi, vui lòng liên hệ bộ phận hỗ trợ của rạp.</p>
+  `);
+}
+
 Object.assign(FORMS, {
   profile(f) {
     const u = CTX.user, n = val(f, 'n'), email = val(f, 'email').toLowerCase(), phone = val(f, 'phone');
@@ -56,6 +137,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const a = e.target.closest('[data-acct]'), pf = e.target.closest('[data-ordf]'), od = e.target.closest('[data-ord]');
     if (pf) return openOrders(pf.dataset.ordf);
     if (od) return openOrder(od.dataset.ord);
+    if (e.target.closest('[data-theme-toggle]')) {
+      const root = document.documentElement;
+      const nextTheme = root.dataset.theme === 'light' ? 'dark' : 'light';
+      root.dataset.theme = nextTheme;
+      localStorage.setItem('viecent-theme', nextTheme);
+      openSettings();
+      return;
+    }
+    if (e.target.closest('[data-motion-toggle]')) {
+      const toggle = e.target.closest('[data-motion-toggle]');
+      document.documentElement.dataset.motion = toggle.checked ? 'on' : 'off';
+      localStorage.setItem('viecent-motion', document.documentElement.dataset.motion);
+      openSettings();
+      return;
+    }
     if (!a) return;
     const act = a.dataset.acct, menu = $('.acct-menu');
     if (act === 'toggle') { menu.hidden = !menu.hidden; a.setAttribute('aria-expanded', !menu.hidden); return; }
@@ -65,6 +161,11 @@ document.addEventListener('DOMContentLoaded', () => {
     else if (act === 'back') openOrders();
     else if (act === 'profile') openProfile();
     else if (act === 'pw') openPw();
+    else if (act === 'promotions') openPromotions();
+    else if (act === 'favorites') openFavorites();
+    else if (act === 'notifications') openNotifications();
+    else if (act === 'settings') openSettings();
+    else if (act === 'help') openHelp();
     else if (act === 'logout') { CTX.user = null; renderAcct(); closeModal(); closeDetail(); cxClose(); toast('Đã đăng xuất'); }
     else if (act === 'dl') { const o = DB.orders.find(x => x.id === a.dataset.id); downloadTicket({ code: o.id, movie: o.movie, cin: o.cin, time: o.time, date: o.date, seats: o.seats, total: o.total }); }
     else if (act === 'cancel') {
@@ -72,4 +173,16 @@ document.addEventListener('DOMContentLoaded', () => {
       cancelOrder(o); drawPos(); openOrder(o.id); toast(`Đã hủy đơn ${o.id}. Tiền hoàn về phương thức thanh toán trong 3–5 ngày`);
     }
   });
+
+  document.addEventListener('input', function(e) {
+    if (!e.target.matches('[data-motion-speed]')) return;
+
+    const speed = Number(e.target.value);
+    const duration = { 1: 1.8, 2: 1, 3: 0.5 }[speed];
+
+    document.documentElement.style.setProperty('--motion-speed', duration);
+    document.documentElement.dataset.motionSpeed = speed;
+    localStorage.setItem('viecent-motion-speed', speed);
+  });
+
 });

@@ -69,13 +69,71 @@ const FORMS = {
 };
 
 /* ---- Nút tài khoản trên thanh điều hướng ---- */
+
+/* ---- Nút tài khoản trên thanh điều hướng ---- */
 function renderAcct() {
   const el = $('#acct'), u = CTX.user;
-  el.innerHTML = u ? `<button class="acct-btn" data-acct="toggle" aria-haspopup="true" aria-expanded="false" aria-label="Tài khoản"><span class="acct-av">${esc(u.n.trim().split(/\s+/).pop()[0] || '?').toUpperCase()}</span></button>
-    <div class="acct-menu" hidden><div class="acct-head"><strong>${esc(u.n)}</strong><span>${esc(tierName(u.tier))}${tierOf(u.tier).pct ? ` · ưu đãi ${tierOf(u.tier).pct}%` : ''}</span></div>
-      <button data-acct="tickets">Vé của tôi</button><button data-acct="history">Lịch sử đặt vé</button><button data-acct="profile">Thông tin tài khoản</button><button data-acct="pw">Đổi mật khẩu</button><button data-acct="logout" class="out">Đăng xuất</button></div>`
-    : `<button class="btn-glass acct-login" data-auth="login">Đăng nhập</button>`;
+
+  el.innerHTML = u ? `
+    <button class="acct-btn" data-acct="toggle"
+      aria-haspopup="true" aria-expanded="false"
+      aria-label="Mở menu tài khoản">
+      <span class="acct-av">
+        ${esc(u.n.trim().split(/\s+/).pop()[0] || '?').toUpperCase()}
+      </span>
+    </button>
+
+    <div class="acct-menu" hidden>
+      <div class="acct-head">
+        <strong>${esc(u.n)}</strong>
+        <span>Thành viên VIECENT</span>
+      </div>
+
+      <div class="acct-section-title">TÀI KHOẢN</div>
+      <button data-acct="profile">
+        <span>👤</span> Thông tin tài khoản
+      </button>
+      <button data-acct="pw">
+        <span>🔒</span> Đổi mật khẩu
+      </button>
+      <button data-acct="tickets">
+        <span>🎟️</span> Vé của tôi
+      </button>
+      <button data-acct="history">
+        <span>📋</span> Lịch sử đặt vé
+      </button>
+
+      <div class="acct-divider"></div>
+      <div class="acct-section-title">TIỆN ÍCH</div>
+
+      <button data-acct="promotions">
+        <span>⭐</span> Ưu đãi của tôi
+      </button>
+      <button data-acct="favorites">
+        <span>❤️</span> Phim yêu thích
+      </button>
+      <button data-acct="notifications">
+        <span>🔔</span> Thông báo
+      </button>
+      <button data-acct="settings">
+        <span>⚙️</span> Cài đặt
+      </button>
+      <button data-acct="help">
+        <span>❓</span> Trợ giúp
+      </button>
+
+      <div class="acct-divider"></div>
+      <button data-acct="logout" class="out">
+        <span>🚪</span> Đăng xuất
+      </button>
+    </div>
+  ` : `
+    <button class="btn-glass acct-login" data-auth="login">
+      Đăng nhập
+    </button>
+  `;
 }
+
 
 /* ---- Khóa thao tác đặt vé khi chưa đăng nhập ---- */
 const _ob2 = openBooking;

@@ -24,7 +24,7 @@
 <div id="view-customer" class="role-view active">
   <header class="cinematic-nav">
     <a href="#top" class="nav-brand"><span class="logo-mark">♛</span><span>VIE<span class="gold-text">CENT</span></span></a>
-    <nav class="nav-links" aria-label="Điều hướng chính">
+    <nav class="nav-links" id="mobile-nav" aria-label="Điều hướng chính">
       <a href="#top" class="nav-link active">Trang chủ</a>
       <a href="#movies" class="nav-link">Phim</a>
       <a href="#showtimes" class="nav-link">Lịch chiếu</a>
@@ -32,6 +32,18 @@
       <a href="#promos" class="nav-link">Ưu đãi</a>
     </nav>
     <div class="nav-actions">
+      <button
+              type="button"
+              class="mobile-menu-toggle"
+              id="mobile-menu-toggle"
+              aria-label="Mở menu điều hướng"
+              aria-expanded="false"
+              aria-controls="mobile-nav"
+      >
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
       <div class="search-box">
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
         <input type="search" id="search" placeholder="Tên phim, đạo diễn, diễn viên..." aria-label="Tìm phim">
@@ -196,6 +208,42 @@
       </section>
     </div>
   </div>
+</div>
+
+
+<!-- ================= ƯU ĐÃI CỦA TÔI ================= -->
+<div id="view-promotions" class="role-view">
+  <main class="promo-page">
+    <header class="promo-header">
+      <button type="button" class="promo-back" id="promo-back">← Quay lại</button>
+      <div>
+        <span class="promo-eyebrow">ĐẶC QUYỀN THÀNH VIÊN</span>
+        <h2>Ưu đãi của tôi</h2>
+        <p>Khám phá các ưu đãi dành riêng cho bạn tại VIECENT.</p>
+      </div>
+    </header>
+
+    <section class="promo-summary">
+      <div class="promo-summary-icon">🎟️</div>
+      <div>
+        <h3>Ưu đãi dành cho bạn</h3>
+        <p>Các mã ưu đãi bạn có thể sử dụng khi đặt vé.</p>
+      </div>
+    </section>
+
+    <section class="promo-content">
+      <div class="promo-section-heading">
+        <h3>Mã ưu đãi của tôi</h3>
+        <span>VIECENT MEMBER</span>
+      </div>
+
+      <div class="promo-empty">
+        <div class="promo-empty-icon">🎫</div>
+        <h3>Chưa có ưu đãi nào</h3>
+        <p>Ưu đãi dành cho tài khoản của bạn sẽ xuất hiện tại đây.</p>
+      </div>
+    </section>
+  </main>
 </div>
 
 
