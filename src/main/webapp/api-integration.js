@@ -1,0 +1,81 @@
+/* api-integration.js
+ * Các hàm tích hợp dùng chung cho những module còn lại.
+ * Dữ liệu trả về giữ nguyên DTO của ApiServlet; không giả lập lưu thành công.
+ */
+'use strict';
+const RapPhimAPI = Object.freeze({
+  // Tài khoản khách hàng
+  loginCustomer: (email, password) => API.post('auth/login', { email, password }),
+  registerCustomer: payload => API.post('auth/register', payload),
+  currentCustomer: () => API.get('auth/me'),
+  logoutCustomer: () => API.post('auth/logout'),
+  updateProfile: payload => API.put('customers/profile', payload),
+  changePassword: (matKhauCu, matKhauMoi) => API.put('customers/password', { matKhauCu, matKhauMoi }),
+  customerHistory: () => API.get('customers/history'),
+  tiers: () => API.get('tiers'),
+
+  // Đặt vé / thanh toán
+  shows: () => API.get('shows'),
+  combosList: () => API.get('combos'),
+  createOrder: maKH => API.post('orders/create', maKH ? { maKH } : {}),
+  orders: () => API.get('orders'),
+  order: maDon => API.get(`orders/${encodeURIComponent(maDon)}`),
+  addSeat: (maDon, maSuat, maGhe) => API.post(`orders/${encodeURIComponent(maDon)}/add-seat`, { maSuat, maGhe }),
+  addCombo: (maDon, maCombo, soLuong = 1) => API.post(`orders/${encodeURIComponent(maDon)}/add-combo`, { maCombo, soLuong }),
+  cancelOrder: maDon => API.post(`orders/${encodeURIComponent(maDon)}/cancel`),
+  confirmOrder: maDon => API.post(`orders/${encodeURIComponent(maDon)}/confirm`),
+  createPayment: (maDon, soTien, phuongThuc) => API.post('payments/create', { maDon, soTien, phuongThuc }),
+  pay: maTT => API.post(`payments/${encodeURIComponent(maTT)}/pay`),
+  cancelPayment: maTT => API.post(`payments/${encodeURIComponent(maTT)}/cancel`),
+  payment: maTT => API.get(`payments/${encodeURIComponent(maTT)}`),
+
+  // Nhân viên, ghế và báo cáo
+  staff: () => API.get('staff'),
+  seatsForRoom: maPhong => API.get(`seats?room=${encodeURIComponent(maPhong)}`),
+  seatsForShow: maSuat => API.get(`seats/show/${encodeURIComponent(maSuat)}`),
+  tickets: () => API.get('tickets'),
+  ticket: maVe => API.get(`tickets/${encodeURIComponent(maVe)}`),
+  validateTicket: maVe => API.post(`tickets/${encodeURIComponent(maVe)}/validate`),
+  useTicket: maVe => API.post(`tickets/${encodeURIComponent(maVe)}/use`),
+  reportDay: date => API.get(`reports?type=day&date=${encodeURIComponent(date)}`),
+  reportMonth: (month, year) => API.get(`reports?type=month&month=${encodeURIComponent(month)}&year=${encodeURIComponent(year)}`),
+  reportYear: year => API.get(`reports?type=year&year=${encodeURIComponent(year)}`),
+
+  // Luồng đặt vé: chỉ chạy với mã suất/ghế/combo đã được xác định từ API.
+  async checkout({ maKhachHang, maSuat, maGhes, combos = [], tongTien, phuongThuc = 'TIEN_MAT' }) {
+    if (!maSuat || !Array.isArray(maGhes) || maGhes.length === 0) {
+      throw new Error('Cần mã suất chiếu và ít nhất một mã ghế hợp lệ.');
+    }
+    const orderResponse = await this.createOrder(maKhachHang);
+    const order = orderResponse.order || orderResponse;
+    const maDon = order.maDon;
+    if (!maDon) throw new Error('API không trả về mã đơn đặt vé.');
+
+    try {
+      for (const maGhe of maGhes) {
+        await this.addSeat(maDon, maSuat, maGhe);
+      }
+      for (const item of combos) {
+        if (!item.maCombo || !Number.isInteger(Number(item.soLuong)) || Number(item.soLuong) < 1) {
+          throw new Error('Thông tin combo không hợp lệ.');
+        }
+        await this.addCombo(maDon, item.maCombo, Number(item.soLuong));
+      }
+      // Ưu tiên tổng tiền do backend tính sau khi thêm ghế/combo; không tin tuyệt đối giá từ trình duyệt.
+      const currentOrderResponse = await this.order(maDon);
+      const currentOrder = currentOrderResponse.order || currentOrderResponse;
+      const serverTotal = Number(currentOrder.tongTien);
+      const amount = Number.isFinite(serverTotal) && serverTotal >= 0 ? serverTotal : Number(tongTien);
+      if (!Number.isFinite(amount) || amount < 0) throw new Error('Không xác định được tổng tiền đơn hàng từ máy chủ.');
+      const paymentResponse = await this.createPayment(maDon, amount, phuongThuc);
+      const payment = paymentResponse.payment || paymentResponse;
+      if (!payment.maTT) throw new Error('API không trả về mã thanh toán.');
+      await this.pay(payment.maTT);
+      return { order: await this.order(maDon), payment: await this.payment(payment.maTT) };
+    } catch (error) {
+      // Cố gắng hủy đơn nếu bất kỳ bước nào thất bại; giữ lỗi gốc để giao diện hiển thị.
+      try { await this.cancelOrder(maDon); } catch (_) {}
+      throw error;
+    }
+  }
+});
