@@ -4,42 +4,48 @@
  * Dữ liệu trả về giữ nguyên DTO của ApiServlet; không giả lập lưu thành công.
  */
 
+const getApi = () => {
+  if (typeof API !== 'undefined') return API;
+  if (typeof window.API !== 'undefined') return window.API;
+  throw new Error('API Client (api-client.js) chưa được tải hoặc chưa sẵn sàng.');
+};
+
 const RapPhimAPI = Object.freeze({
   // Tài khoản khách hàng
-  loginCustomer: (email, password) => API.post('auth/login', { email, password }),
-  registerCustomer: payload => API.post('auth/register', payload),
-  currentCustomer: () => API.get('auth/me'),
-  logoutCustomer: () => API.post('auth/logout'),
-  updateProfile: payload => API.put('customers/profile', payload),
-  changePassword: (matKhauCu, matKhauMoi) => API.put('customers/password', { matKhauCu, matKhauMoi }),
-  customerHistory: () => API.get('customers/history'),
-  tiers: () => API.get('tiers'),
+  loginCustomer: (email, password) => getApi().post('auth/login', { email, password }),
+  registerCustomer: payload => getApi().post('auth/register', payload),
+  currentCustomer: () => getApi().get('auth/me'),
+  logoutCustomer: () => getApi().post('auth/logout'),
+  updateProfile: payload => getApi().put('customers/profile', payload),
+  changePassword: (matKhauCu, matKhauMoi) => getApi().put('customers/password', { matKhauCu, matKhauMoi }),
+  customerHistory: () => getApi().get('customers/history'),
+  tiers: () => getApi().get('tiers'),
 
   // Đặt vé / thanh toán
-  createOrder: maKH => API.post('orders/create', maKH ? { maKH } : {}),
-  orders: () => API.get('orders'),
-  order: maDon => API.get(`orders/${encodeURIComponent(maDon)}`),
-  addSeat: (maDon, maSuat, maGhe) => API.post(`orders/${encodeURIComponent(maDon)}/add-seat`, { maSuat, maGhe }),
-  addCombo: (maDon, maCombo, soLuong = 1) => API.post(`orders/${encodeURIComponent(maDon)}/add-combo`, { maCombo, soLuong }),
-  applyPromotion: (maDon, maKM) => API.post(`orders/${encodeURIComponent(maDon)}/promotion`, { maKM }),
-  cancelOrder: maDon => API.post(`orders/${encodeURIComponent(maDon)}/cancel`),
-  confirmOrder: maDon => API.post(`orders/${encodeURIComponent(maDon)}/confirm`),
-  createPayment: (maDon, soTien, phuongThuc) => API.post('payments/create', { maDon, soTien, phuongThuc }),
-  pay: maTT => API.post(`payments/${encodeURIComponent(maTT)}/pay`),
-  cancelPayment: maTT => API.post(`payments/${encodeURIComponent(maTT)}/cancel`),
-  payment: maTT => API.get(`payments/${encodeURIComponent(maTT)}`),
+  createOrder: maKH => getApi().post('orders/create', maKH ? { maKH } : {}),
+  orders: () => getApi().get('orders'),
+  order: maDon => getApi().get(`orders/${encodeURIComponent(maDon)}`),
+  addSeat: (maDon, maSuat, maGhe) => getApi().post(`orders/${encodeURIComponent(maDon)}/add-seat`, { maSuat, maGhe }),
+  addCombo: (maDon, maCombo, soLuong = 1) => getApi().post(`orders/${encodeURIComponent(maDon)}/add-combo`, { maCombo, soLuong }),
+  applyPromotion: (maDon, maKM) => getApi().post(`orders/${encodeURIComponent(maDon)}/promotion`, { maKM }),
+  cancelOrder: maDon => getApi().post(`orders/${encodeURIComponent(maDon)}/cancel`),
+  confirmOrder: maDon => getApi().post(`orders/${encodeURIComponent(maDon)}/confirm`),
+  createPayment: (maDon, soTien, phuongThuc) => getApi().post('payments/create', { maDon, soTien, phuongThuc }),
+  pay: maTT => getApi().post(`payments/${encodeURIComponent(maTT)}/pay`),
+  cancelPayment: maTT => getApi().post(`payments/${encodeURIComponent(maTT)}/cancel`),
+  payment: maTT => getApi().get(`payments/${encodeURIComponent(maTT)}`),
 
   // Nhân viên, rạp, phòng, ghế và báo cáo
-  staff: () => API.get('staff'),
-  seatsForRoom: maPhong => API.get(`seats?room=${encodeURIComponent(maPhong)}`),
-  seatsForShow: maSuat => API.get(`seats/show/${encodeURIComponent(maSuat)}`),
-  tickets: () => API.get('tickets'),
-  ticket: maVe => API.get(`tickets/${encodeURIComponent(maVe)}`),
-  validateTicket: maVe => API.post(`tickets/${encodeURIComponent(maVe)}/validate`),
-  useTicket: maVe => API.post(`tickets/${encodeURIComponent(maVe)}/use`),
-  reportDay: date => API.get(`reports?type=day&date=${encodeURIComponent(date)}`),
-  reportMonth: (month, year) => API.get(`reports?type=month&month=${encodeURIComponent(month)}&year=${encodeURIComponent(year)}`),
-  reportYear: year => API.get(`reports?type=year&year=${encodeURIComponent(year)}`),
+  staff: () => getApi().get('staff'),
+  seatsForRoom: maPhong => getApi().get(`seats?room=${encodeURIComponent(maPhong)}`),
+  seatsForShow: maSuat => getApi().get(`seats/show/${encodeURIComponent(maSuat)}`),
+  tickets: () => getApi().get('tickets'),
+  ticket: maVe => getApi().get(`tickets/${encodeURIComponent(maVe)}`),
+  validateTicket: maVe => getApi().post(`tickets/${encodeURIComponent(maVe)}/validate`),
+  useTicket: maVe => getApi().post(`tickets/${encodeURIComponent(maVe)}/use`),
+  reportDay: date => getApi().get(`reports?type=day&date=${encodeURIComponent(date)}`),
+  reportMonth: (month, year) => getApi().get(`reports?type=month&month=${encodeURIComponent(month)}&year=${encodeURIComponent(year)}`),
+  reportYear: year => getApi().get(`reports?type=year&year=${encodeURIComponent(year)}`),
 
   // Luồng đặt vé: chỉ chạy với mã suất/ghế/combo đã được xác định từ API.
   async checkout({ maKhachHang, maSuat, maGhes, combos = [], maKM = null, phuongThuc = 'ChuyenKhoan' }) {
@@ -47,9 +53,9 @@ const RapPhimAPI = Object.freeze({
       throw new Error('Cần mã suất chiếu và ít nhất một mã ghế hợp lệ.');
     }
     const orderResponse = await this.createOrder(maKhachHang);
-    const order = orderResponse.order || orderResponse;
+    const order = (orderResponse && orderResponse.order) || orderResponse;
+    if (!order || !order.maDon) throw new Error('API không trả về mã đơn đặt vé.');
     const maDon = order.maDon;
-    if (!maDon) throw new Error('API không trả về mã đơn đặt vé.');
 
     try {
       // 1. Thêm danh sách ghế
@@ -68,9 +74,9 @@ const RapPhimAPI = Object.freeze({
 
       // 4. Luôn lấy tổng tiền đã tính ở server (bao gồm giảm giá), không tin số tiền từ giao diện.
       const currentOrderResponse = await this.order(maDon);
-      const currentOrder = currentOrderResponse.order || currentOrderResponse;
-      const gross = Number(currentOrder.tongTien);
-      const discount = Number(currentOrder.tienGiam || 0);
+      const currentOrder = (currentOrderResponse && currentOrderResponse.order) || currentOrderResponse;
+      const gross = Number(currentOrder?.tongTien || 0);
+      const discount = Number(currentOrder?.tienGiam || 0);
       const amountDue = gross - discount;
 
       if (!Number.isFinite(amountDue) || amountDue < 0) {
@@ -79,8 +85,8 @@ const RapPhimAPI = Object.freeze({
 
       // 5. Tạo giao dịch thanh toán
       const paymentResponse = await this.createPayment(maDon, amountDue, phuongThuc);
-      const payment = paymentResponse.payment || paymentResponse;
-      if (!payment.maTT) throw new Error('API không trả về mã thanh toán.');
+      const payment = (paymentResponse && paymentResponse.payment) || paymentResponse;
+      if (!payment || !payment.maTT) throw new Error('API không trả về mã thanh toán.');
 
       // 6. Xử lý thanh toán
       await this.pay(payment.maTT);
@@ -96,3 +102,6 @@ const RapPhimAPI = Object.freeze({
     }
   }
 });
+
+/* Xuất RapPhimAPI ra phạm vi toàn cục window */
+window.RapPhimAPI = RapPhimAPI;

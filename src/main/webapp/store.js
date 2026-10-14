@@ -1,210 +1,212 @@
 'use strict';
-/* store.js — Lớp dữ liệu mở rộng: loại khách hàng, phòng chiếu, ghế, suất chiếu, đơn hàng, vé.
-   Nạp ngay sau scriptcnm.js. Đã được kết nối đồng bộ với API Servlet qua API Client. */
+/* staff-pro.js — Nhân viên: đăng nhập + phân quyền, tra cứu phim/suất chiếu, tra cứu vé, quản lý đơn đặt vé.
+   Đã được kết nối đồng bộ với Backend ApiServlet qua API Client. */
 
-const CTX = { user: null, staff: null, admin: false, inPos: 0, posTier: 'regular', src: 'online', method: '' };
-const ADMIN_ACC = { user: 'admin', pw: 'admin123' };
-const pad2 = n => String(n).padStart(2, '0');
-const toMin = t => +t.slice(0, 2) * 60 + +t.slice(3, 5);
-const durMin = m => { const x = /(\d+)h\s*(\d+)?/.exec(m?.d || ''); return x ? +x[1] * 60 + (+x[2] || 0) : 120; };
-const endTime = (t, m) => { const e = toMin(t) + durMin(m); return pad2((e / 60 | 0) % 24) + ':' + pad2(e % 60); };
-
-function parseShow(k, t) {
-  const [d, mo] = k.split('/').map(Number), n = new Date(), dt = new Date(n.getFullYear(), mo - 1, d, +t.slice(0, 2), +t.slice(3, 5));
-  if (dt - n < -180 * 864e5) dt.setFullYear(n.getFullYear() + 1);
-  return dt.getTime();
-}
-
-/* ---- Loại khách hàng & tài khoản ---- */
-DB.tiers = [
-  { id: 'regular', n: 'Thường', pct: 0, desc: 'Khách mới đăng ký' },
-  { id: 'student', n: 'Học sinh, sinh viên', pct: 5, desc: 'Có thẻ học sinh, sinh viên' },
-  { id: 'silver', n: 'Thành viên Bạc', pct: 4, desc: 'Khách thân thiết' },
-  { id: 'gold', n: 'Thành viên Vàng', pct: 8, desc: 'Khách VIP' }
-];
-
-const SEED_ACC = { c1: ['khoa@example.com', '2001-05-14'], c2: ['ha@example.com', '2004-09-02'], c3: ['huy@example.com', '1998-12-20'] };
-DB.customers.forEach(c => Object.assign(c, { email: SEED_ACC[c.id]?.[0] || c.email, dob: SEED_ACC[c.id]?.[1] || c.dob, pw: '123456' }));
-Object.values(MEMBERS).forEach(m => m.promo = '');
-[['s1', 'thungan1'], ['s2', 'thungan2'], ['s3', 'quanly']].forEach(([id, u]) => Object.assign(DB.staff.find(s => s.id === id) || {}, { user: u, pw: '123456' }));
-DB.staff.push({ id: 's4', n: 'Phạm Văn D', role: 'Soát vé', cin: 'Vincom Center Q1', shift: 'Tối', st: 'on', user: 'soatve', pw: '123456' });
-
-const tierOf = id => DB.tiers.find(t => t.id === id) || DB.tiers[0];
-const custByPhone = p => p ? DB.customers.find(c => c.phone === p && c.st === 'on') : null;
-
-/* ---- Ghế: giá theo loại, sơ đồ theo hàng ---- */
-DB.seatTypes = [
-  { id: 'standard', n: 'Thường', p: 120000 }, { id: 'vip', n: 'VIP', p: 150000 }, { id: 'couple', n: 'Ghế đôi', p: 280000 }
-];
-DB.seatRows = ROWS.map(r => ({ id: r, t: rowType(r), cnt: rowCount(r) }));
-const totalSeats = () => ROWS.reduce((a, r) => a + rowCount(r), 0);
-
-function syncLayout() {
-  DB.seatRows.sort((a, b) => a.id.localeCompare(b.id));
-  ROWS.length = 0; DB.seatRows.forEach(x => ROWS.push(x.id));
-  DB.seatTypes.forEach(t => { PRICE[t.id] = Number(t.p) || 0; TYPE_NAME[t.id] = t.n; });
-  $$('#pane-step-1 .seat-legend .legend-item').slice(0, 3).forEach((el, i) => { const t = DB.seatTypes[i]; if (t) el.lastChild.textContent = ` ${t.n} ${Math.round(t.p / 1000)}K`; });
-}
-
-/* ---- Phòng chiếu & suất chiếu ---- */
-DB.rooms = [];
-CINEMAS.forEach(c => {
-  const main = /IMAX|4DX|3D/.exec(c.room)?.[0] || '2D';
-  DB.rooms.push({ id: c.id + '1', cin: c.id, n: c.room, type: main, st: 'on' }, { id: c.id + '2', cin: c.id, n: 'Phòng 02', type: '2D', st: 'on' }, { id: c.id + '3', cin: c.id, n: 'Phòng 03', type: '2D', st: 'on' });
-});
-
-const roomById = id => DB.rooms.find(r => r.id === id);
-const movieById = id => MOVIES.find(m => m.id === id);
-const roomLabel = id => { const r = roomById(id); return r ? `${CINEMAS.find(c => c.id === r.cin)?.n || '?'} · ${r.n}` : '—'; };
-
-function findClash(x, ignore) {
-  const s0 = toMin(x.time), e0 = s0 + durMin(movieById(x.m)) + 15;
-  return DB.showtimes.find(s => s !== ignore && s.st === 'on' && s.r === x.r && s.date === x.date && s0 < toMin(s.time) + durMin(movieById(s.m)) + 15 && e0 > toMin(s.time));
-}
-
-DB.showtimes = [];
-MOVIES.filter(m => m.st === 'now').sort((a, b) => a.fm.length - b.fm.length).forEach((m, mi) => CINEMAS.forEach(c => DATES.forEach(d => TIMES.forEach((t, ti) => {
-  if ((ti + mi) % 5 > 2) return;
-  const room = DB.rooms.find(r => r.cin === c.id && m.fm.includes(r.type) && !findClash({ m: m.id, r: r.id, date: d.k, time: t }));
-  if (room) DB.showtimes.push({ id: 'sc' + DB.showtimes.length, m: m.id, r: room.id, date: d.k, time: t, st: 'on' });
-}))));
-
-const showRoom = sh => { const s = DB.showtimes.find(x => x.m === sh.m.id && x.date === sh.date && x.time === sh.time && roomById(x.r)?.cin === sh.cin.id); return s && roomById(s.r); };
-
-function timesFor(m, c, date) {
-  return DB.showtimes.filter(s => s.m === m.id && s.date === date && s.st === 'on' && roomById(s.r)?.st === 'on' && roomById(s.r)?.cin === c.id).sort((a, b) => a.time.localeCompare(b.time));
-}
-
-function sortShows() { DB.showtimes.sort((a, b) => DATES.findIndex(d => d.k === a.date) - DATES.findIndex(d => d.k === b.date) || a.time.localeCompare(b.time)); }
-sortShows();
-
-/* ---- Đơn hàng ---- */
-const ORD_ST = { ok: ['Đã thanh toán', 'success'], wait: ['Chờ xác nhận', 'pending'], cancel: ['Đã hủy', 'muted'] };
-const TK_ST = { valid: ['Chưa sử dụng', 'pending'], used: ['Đã sử dụng', 'success'], wait: ['Chờ xác nhận', 'pending'], cancel: ['Đã hủy', 'muted'] };
-const seatList = o => String(o.seats).split(',').map(s => s.trim()).filter(Boolean);
-const dayKey = d => `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}`;
-const ORIG = { 'CNV-8849': ['ds', 'v', 'c1'], 'CNV-8848': ['dn', 'l', 'c2'], 'CNV-8847': ['kf', 'a', 'c1'] };
-
-DB.orders.forEach(o => {
-  const origData = ORIG[o.id] || ['ds', 'v', 'c1'];
-  const [mid, cid, cust] = origData;
-  const room = DB.rooms.find(r => r.cin === cid) || DB.rooms[0];
-  const n = seatList(o).length;
-  Object.assign(o, { mid, cid, cust, date: DATES[0].k, room: room.n, key: `${mid}|${DATES[0].k}|${cid}|${o.time}`, startAt: parseShow(DATES[0].k, o.time) + 864e5 * 0, seatAmt: o.total, comboAmt: 0, disc: 0, items: [], promo: '', method: 'VNPay', src: 'online', at: Date.now() - n * 3600e3, used: [] });
-});
-
-(function seedHistory() {
-  const R = rng(20260), pick = a => a[R() * a.length | 0], now = MOVIES.filter(m => m.st === 'now');
-  if (!now.length) return;
-  for (let i = 0; i < 46; i++) {
-    const m = pick(now), c = pick(CINEMAS), at = new Date(); at.setDate(at.getDate() - (R() * 90 | 0)); at.setHours(9 + (R() * 13 | 0), R() * 60 | 0, 0, 0);
-    const t = pick(TIMES), cu = pick(DB.customers), src = R() < .35 ? 'pos' : 'online', ids = [];
-    for (let k = 1 + (R() * 4 | 0); k > 0; k--) { const r = ROWS[R() * 5 | 0], id = r + (1 + (R() * rowCount(r) | 0)); if (!ids.includes(id)) ids.push(id); }
-    const seatAmt = ids.reduce((a, id) => a + PRICE[rowType(id[0])], 0), items = [];
-    if (R() < .5) items.push({ n: COMBOS[0].n, q: 1, p: COMBOS[0].p }); if (R() < .5) items.push({ n: COMBOS[1].n, q: 1 + (R() * 2 | 0), p: COMBOS[1].p });
-    const comboAmt = items.reduce((a, x) => a + x.p * x.q, 0), pct = tierOf(cu.tier).pct, promo = R() < .3 ? 'CINE2026' : '';
-    const disc = Math.round((seatAmt + comboAmt) * pct / 100) + (promo ? Math.round((seatAmt + comboAmt) * .1) : 0), st = R() < .07 ? 'cancel' : 'ok', date = dayKey(at);
-    const startAt = new Date(at); startAt.setHours(+t.slice(0, 2), +t.slice(3), 0, 0);
-    const code = 'CNV-' + (8700 + i);
-    DB.orders.push({ id: code, code: '#' + code, movie: m.t, mid: m.id, cin: c.n, cid: c.id, room: (DB.rooms.find(r => r.cin === c.id) || DB.rooms[0]).n, time: t, date, key: `${m.id}|${date}|${c.id}|${t}`, seats: ids.join(', '), seatAmt, comboAmt, disc, total: seatAmt + comboAmt - disc, items, promo, method: pick(['VNPay', 'MoMo', 'Thẻ', 'Tiền mặt']), src, cust: cu.id, staff: src === 'pos' ? 'Nguyễn Văn A' : null, st, at: +at, startAt: +startAt, used: st === 'ok' && +startAt < Date.now() ? ids.slice() : [] });
-  }
-  DB.orders.sort((a, b) => b.at - a.at);
-})();
-
-function syncSeats() {
-  Object.keys(S.booked).forEach(k => delete S.booked[k]);
-  DB.orders.forEach(o => { if (o.key && o.st !== 'cancel') (S.booked[o.key] ||= []).push(...seatList(o)); });
-}
-
-const canCancel = o => o.st !== 'cancel' && !(o.used || []).length && (o.startAt || 0) > Date.now();
-
-function cancelOrder(o) {
-  o.st = 'cancel';
-  o.cancelAt = Date.now();
-  syncSeats();
-  if (o.id) {
-    API.huyDon(o.id).catch(() => {});
-  }
-}
-
-const custName = o => DB.customers.find(c => c.id === o.cust)?.n || o.guest?.name || 'Khách vãng lai';
-
-function ordBadge(o) {
-  if (o.st !== 'ok') return ORD_ST[o.st] || ORD_ST.wait;
-  if (seatList(o).every(s => (o.used || []).includes(s))) return ['Đã sử dụng', 'success'];
-  return (o.startAt || 0) < Date.now() ? ['Đã kết thúc', 'muted'] : ['Chưa sử dụng', 'pending'];
-}
-
-function ticketRows(q = '', st = 'all') {
-  const k = norm(q.trim()), out = [];
-  DB.orders.forEach(o => {
-    const c = DB.customers.find(x => x.id === o.cust);
-    seatList(o).forEach(seat => {
-      const status = o.st === 'cancel' ? 'cancel' : o.st === 'wait' ? 'wait' : (o.used || []).includes(seat) ? 'used' : 'valid', code = `${o.id}-${seat}`;
-      if (st !== 'all' && st !== status) return;
-      if (k && !norm([code, o.movie, seat, c?.n, c?.phone, o.guest?.name, o.guest?.phone].join(' ')).includes(k)) return;
-      out.push({ code, o, seat, status });
-    });
-  });
-  return out;
-}
-
-function useTicket(o, seat, on = true) { o.used ||= []; const i = o.used.indexOf(seat); if (on && i < 0) o.used.push(seat); if (!on && i > -1) o.used.splice(i, 1); }
-
-function orderLines(o) {
-  const row = (a, b) => `<dt>${a}</dt><dd>${b}</dd>`, st = ordBadge(o), c = DB.customers.find(x => x.id === o.cust);
-  return row('Mã đơn', esc(o.id)) + row('Phim', esc(o.movie)) + row('Suất chiếu', `${esc(o.time)} · ${esc(o.date || '')}`) + row('Rạp · Phòng', `${esc(o.cin)} · ${esc(o.room || '')}`) + row('Ghế', esc(o.seats))
-    + row('Tiền vé', fmt(o.seatAmt ?? o.total)) + row('Combo', (o.items || []).map(i => `${i.q} × ${esc(i.n)}`).join(', ') + ((o.items || []).length ? ` (${fmt(o.comboAmt)})` : 'Không'))
-    + row('Khuyến mãi', esc(o.promo || 'Không') + (o.disc ? ` · giảm ${fmt(o.disc)}` : '')) + row('Tổng thanh toán', `<b>${fmt(Number(o.total) || 0)}</b>`) + row('Phương thức', esc(o.method || '—'))
-    + row('Kênh', o.src === 'pos' ? 'Quầy · ' + esc(o.staff || '') : 'Online') + row('Khách hàng', esc(custName(o)) + (c ? ` · ${esc(tierOf(c.tier).n)}` : '')) + row('Trạng thái', st[0]);
-}
-
-/* ---- Ghi đè hàm gốc: giảm giá theo loại khách, lưu đủ thông tin đơn ---- */
-const _totals = totals;
-totals = function (sel, combos, promo) {
-  const t = _totals(sel, combos, promo), id = (CTX.inPos ? CTX.posTier : CTX.user?.tier) || 'regular', pct = Number(tierOf(id).pct) || 0;
-  const gross = t.seat + t.combo, tierD = Math.round(gross * pct / 100), disc = Math.min(t.disc + tierD, gross);
-  return { seat: t.seat, combo: t.combo, disc, promoD: t.disc, tierD, pct, tier: tierOf(id).n, total: gross - disc };
+const perm = () => {
+  const r = window.CTX?.staff?.role;
+  return {
+    sell: ['Admin', 'QuanLy', 'NhanVienBanVe', 'Thu ngân'].includes(r),
+    confirm: ['Admin', 'QuanLy', 'NhanVienBanVe', 'Thu ngân'].includes(r),
+    cancelAny: ['Admin', 'QuanLy'].includes(r),
+    orders: ['Admin', 'QuanLy', 'NhanVienBanVe', 'Thu ngân'].includes(r),
+    tickets: ['Admin', 'QuanLy', 'NhanVienKiemVe', 'Soát vé'].includes(r)
+  };
 };
 
-const _addOrder = addOrder;
-addOrder = function (code, movie, cin, time, seats, total) {
-  _addOrder(code, movie, cin, time, seats, total);
-  const o = DB.orders[0], pos = CTX.src === 'pos', X = pos ? S.pos : S, sh = pos ? S.pos.show : S.show, t = totals(X.sel, X.combos, X.promo);
-  const phone = pos ? $('#pos-phone')?.value || '' : '', cu = pos ? custByPhone(phone) : CTX.user;
-  Object.assign(o, { mid: sh.m.id, cid: sh.cin.id, date: sh.date, room: showRoom(sh)?.n || sh.cin.room, key: showKey(sh), startAt: parseShow(sh.date, sh.time), seatAmt: t.seat, comboAmt: t.combo, disc: t.disc,
-    items: COMBOS.filter(c => X.combos[c.id]).map(c => ({ n: c.n, q: X.combos[c.id], p: c.p })), promo: X.promo || '', method: pos ? CTX.method : $('input[name="pay"]:checked')?.value || '',
-    src: pos ? 'pos' : 'online', cust: cu?.id || null, guest: pos && !cu ? { name: $('#pos-name')?.value.trim() || '', phone } : null, staff: pos ? CTX.staff?.n || null : null, at: Date.now(), used: [], st: 'ok' });
+let posTab = 'sell';
+const PF = { q: '', date: '', cin: '' }, PT = { q: '', st: 'all' }, PO = { q: '', st: 'all' };
 
-  // Gọi API tạo đơn và thanh toán trên Backend nếu người dùng đã đăng nhập hoặc mua quầy
-  if (cu || pos) {
-    API.taoDonDatVe(cu?.id || 'GUEST', pos ? CTX.staff?.id || 'STAFF' : null).then(res => {
-      const maDon = res.maDon || res.id;
-      if (maDon) {
-        o.id = maDon;
-        if (X.promo) API.apDungKhuyenMai(maDon, X.promo).catch(() => {});
-        API.xacNhanDon(maDon).catch(() => {});
+/* Xác thực đăng nhập nhân viên qua API */
+async function loginStaff(u, p) {
+  try {
+    const data = (typeof API !== 'undefined' && typeof API.dangNhapNhanVien === 'function')
+      ? await API.dangNhapNhanVien(u, p)
+      : (typeof API !== 'undefined' ? await API.post('staff/login', { email: u, password: p }) : {});
+
+    const x = data.staff || data;
+    if (!x || !(x.maNV || x.id)) return 'Máy chủ không trả về thông tin nhân viên.';
+
+    window.CTX.staff = {
+      id: String(x.maNV || x.id),
+      n: x.hoTen || x.n || 'Nhân viên',
+      role: x.chucVu || x.role || 'Nhân viên',
+      email: x.email || u,
+      st: 'on'
+    };
+    paintStaff();
+    return '';
+  } catch (err) {
+    return err.message || 'Không thể đăng nhập tài khoản nhân viên.';
+  }
+}
+
+function paintStaff() {
+  const s = window.CTX?.staff, p = perm();
+  if (!s) return;
+  if ($('.pos-user')) {$('.pos-user').innerHTML = `${esc(s.role)}: ${esc(s.n)} (#${esc(s.id.toUpperCase())}) <button class="btn-glass pos-logout" data-pos="logout">Đăng xuất</button>`;
+  }
+  $$('#pos-tabs [data-tab]').forEach(b => b.hidden = (b.dataset.tab === 'sell' && !p.sell) || (b.dataset.tab === 'orders' && !p.orders) || (b.dataset.tab === 'tickets' && !p.tickets));
+  showTab(p.sell ? 'sell' : p.tickets ? 'tickets' : 'find');
+}
+
+function showTab(t) {
+  posTab = t;
+  $$('#pos-tabs [data-tab]').forEach(b => b.classList.toggle('active', b.dataset.tab === t)); $$
+('#view-staff [data-pane]').forEach(p => p.hidden = p.dataset.pane !== t);
+  if (t === 'find') renderFind(true);
+  if (t === 'tickets') renderTickets2(true);
+  if (t === 'orders') renderOrders2(true);
+}
+
+/* ---- Tra cứu phim và suất chiếu ---- */
+function renderFind(full) {
+  const box = $('[data-pane="find"]');
+  if (!box) return;
+  if (full) {
+    box.innerHTML = `<div class="pos-bar"><input class="pos-input" id="pf-q" placeholder="Tìm tên phim, thể loại, đạo diễn..." value="${esc(PF.q)}"><select class="pos-input" id="pf-date">${(window.DATES || []).map(d => `<option value="${d.k}"${(PF.date \vert{}\vert{} (window.DATES?.[0] ? window.DATES[0].k : '')) === d.k ? ' selected' : ''}>${d.l}</option>`).join('')}</select>
+      <select class="pos-input" id="pf-cin"><option value="">Tất cả rạp</option>${(window.CINEMAS || []).map(c => `<option value="${c.id}"${PF.cin === c.id ? ' selected' : ''}>${c.n}</option>`).join('')}</select></div><div id="pf-res"></div>`;
+    if ($('#pf-q')) $('#pf-q').oninput = e => { PF.q = e.target.value; renderFind(); };
+    if ($('#pf-date')) $('#pf-date').onchange = e => { PF.date = e.target.value; renderFind(); };
+    if ($('#pf-cin')) $('#pf-cin').onchange = e => { PF.cin = e.target.value; renderFind(); };
+  }
+  const q = norm(PF.q.trim()), date = PF.date || window.DATES?.[0]?.k || '', cap = typeof totalSeats === 'function' ? totalSeats() : 60, now = new Date(), nowStr = `${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
+  const rows = (window.DB?.showtimes || []).filter(s => { const m = typeof movieById === 'function' ? movieById(s.m) : null, r = typeof roomById === 'function' ? roomById(s.r) : null; return m && r && s.st === 'on' && s.date === date && (!PF.cin || r.cin === PF.cin) && (!q || norm([m.t, m.g, m.dir, m.cast].join(' ')).includes(q)); });
+
+  if ($('#pf-res')) {
+    $('#pf-res').innerHTML = rows.length ? `<table class="pos-table"><thead><tr><th>Phim</th><th>Giờ chiếu</th><th>Rạp · Phòng</th><th>Ghế trống</th><th></th></tr></thead><tbody>${rows.map(s => {
+      const m = movieById(s.m), r = roomById(s.r), c = (window.CINEMAS || []).find(x => x.id === r.cin) || window.CINEMAS?.[0] || {}, free = Math.max(0, cap - (typeof soldFor === 'function' ? soldFor({ m, date: s.date, cin: c, time: s.time }).size : 0)), past = date === window.DATES?.[0]?.k && s.time < nowStr;
+      return `<tr><td><strong>${esc(m.t)}</strong><small>${esc(m.d)} · ${esc(m.age)} ·${esc(m.g)} · ${esc(m.fm.join('/'))}</small></td><td>${s.time} – ${typeof endTime === 'function' ? endTime(s.time, m) : s.time}</td><td>${esc(c.n)} · ${esc(r.n)}</td><td>${free}/${cap}</td><td>${perm().sell ? `<button class="btn-glass" data-pos="sell" data-id="${s.id}" ${past || !free ? 'disabled' : ''}>Bán vé</button>` : ''}</td></tr>`;
+    }).join('')}</tbody></table>` : '<p class="muted pos-empty">Không có suất chiếu phù hợp.</p>';
+  }
+}
+
+function sellShow(id) {
+  const s = (window.DB?.showtimes || []).find(x => x.id === id), r = typeof roomById === 'function' ? roomById(s?.r) : null, P = window.S?.pos;
+  if (!s || !r || !P) return typeof toast === 'function' ? toast('Không tìm thấy thông tin suất chiếu.') : null;
+  P.show = { m: movieById(s.m), date: s.date, cin: (window.CINEMAS || []).find(c => c.id === r.cin) || window.CINEMAS[0], time: s.time }; P.sel = []; P.paid = false;
+  $$('#pos-shows .pos-movie-btn').forEach(b => b.classList.remove('active'));
+  showTab('sell');
+  if (typeof drawPos === 'function') drawPos();
+  if (typeof toast === 'function') toast(`Đang bán vé: ${P.show.m.t} · ${s.time}`);
+}
+
+/* ---- Tra cứu vé ---- */
+function renderTickets2(full) {
+  const box = $('[data-pane="tickets"]');
+  if (!box) return;
+  const tkStList = window.TK_ST || {};
+  if (full) {
+    box.innerHTML = `<div class="pos-bar"><input class="pos-input" id="pt-q" placeholder="Mã vé, mã đơn, tên hoặc số điện thoại khách..." value="${esc(PT.q)}"><select class="pos-input" id="pt-st"><option value="all">Mọi trạng thái</option>${Object.entries(tkStList).map(([k, v]) => `<option value="${k}"${PT.st === k ? ' selected' : ''}>${v[0]}</option>`).join('')}</select></div><div id="pt-res"></div>`;
+    if ($('#pt-q')) $('#pt-q').oninput = e => { PT.q = e.target.value; renderTickets2(); };
+    if ($('#pt-st')) $('#pt-st').onchange = e => { PT.st = e.target.value; renderTickets2(); };
+  }
+  const rows = typeof ticketRows === 'function' ? ticketRows(PT.q, PT.st) : [];
+  if ($('#pt-res')) {
+    $('#pt-res').innerHTML = rows.length ? `<table class="pos-table"><thead><tr><th>Mã vé</th><th>Phim</th><th>Suất · Phòng</th><th>Ghế</th><th>Khách</th><th>Trạng thái</th><th></th></tr></thead><tbody>${rows.slice(0, 60).map(t => `<tr><td><code>${esc(t.code)}</code></td><td>${esc(t.o.movie)}</td><td>${esc(t.o.time)} ·${esc(t.o.date || '')}<small>${esc(t.o.room \vert{}\vert{} '')}</small></td><td>${esc(t.seat)}</td><td>${esc(typeof custName === 'function' ? custName(t.o) : '')}</td><td>${typeof chip === 'function' ? chip(tkStList[t.status] || ['Chờ', 'pending']) : ''}</td>
+      <td>${t.status === 'valid' ? `<button class="btn-glass" data-pos="use" data-id="${esc(t.o.id)}" data-seat="${esc(t.seat)}">Soát vé</button>` : ''}<button class="btn-glass" data-pos="order" data-id="${esc(t.o.id)}">Chi tiết</button></td></tr>`).join('')}</tbody></table>${rows.length > 60 ? `<p class="muted pos-empty">Hiển thị 60/${rows.length} vé. Hãy nhập thêm từ khóa.</p>` : ''}` : '<p class="muted pos-empty">Không tìm thấy vé.</p>';
+  }
+}
+
+/* ---- Quản lý đơn đặt vé ---- */
+function renderOrders2(full) {
+  const box = $('[data-pane="orders"]');
+  if (!box) return;
+  const ordStList = window.ORD_ST || {};
+  if (full) {
+    box.innerHTML = `<div class="pos-bar"><input class="pos-input" id="po-q" placeholder="Mã đơn, phim, tên hoặc số điện thoại khách..." value="${esc(PO.q)}"><select class="pos-input" id="po-st"><option value="all">Mọi trạng thái</option>${Object.entries(ordStList).map(([k, v]) => `<option value="${k}"${PO.st === k ? ' selected' : ''}>${v[0]}</option>`).join('')}</select></div><div id="po-res"></div>`;
+    if ($('#po-q')) $('#po-q').oninput = e => { PO.q = e.target.value; renderOrders2(); };
+    if ($('#po-st')) $('#po-st').onchange = e => { PO.st = e.target.value; renderOrders2(); };
+  }
+  const q = norm(PO.q.trim()), p = perm(), rows = (window.DB?.orders || []).filter(o => (PO.st === 'all' || o.st === PO.st) && (!q || norm([o.id, o.movie, typeof custName === 'function' ? custName(o) : '', window.DB?.customers?.find(c => c.id === o.cust)?.phone, o.guest?.phone].join(' ')).includes(q))).slice(0, 60);
+
+  if ($('#po-res')) {
+    $('#po-res').innerHTML = rows.length ? `<table class="pos-table"><thead><tr><th>Mã đơn</th><th>Phim · Suất</th><th>Ghế</th><th>Khách</th><th>Tổng</th><th>Trạng thái</th><th></th></tr></thead><tbody>${rows.map(o => `<tr><td><code>${esc(o.id)}</code></td><td>${esc(o.movie)}<small>${esc(o.time)} ·${esc(o.date || '')}</small></td><td>${esc(o.seats)}</td><td>${esc(typeof custName === 'function' ? custName(o) : '')}</td><td>${fmt(Number(o.total) \vert{}\vert{} 0)}</td><td>${typeof chip === 'function' && typeof ordBadge === 'function' ? chip(ordBadge(o)) : ''}</td>
+      <td><button class="btn-glass" data-pos="order" data-id="${esc(o.id)}">Chi tiết</button>${o.st === 'wait' && p.confirm ? `<button class="btn-glass" data-pos="confirm" data-id="${esc(o.id)}">Xác nhận</button>` : ''}${o.st !== 'cancel' && !(o.used || []).length && (o.st === 'wait' || p.cancelAny) ? `<button class="btn-glass danger" data-pos="cancel" data-id="${esc(o.id)}">Hủy đơn</button>` : ''}</td></tr>`).join('')}</tbody></table>` : '<p class="muted pos-empty">Không có đơn phù hợp.</p>';
+  }
+}
+
+const showOrderDlg = o => typeof dlg === 'function' ? dlg(`<h3>Đơn ${esc(o.id)}</h3><dl class="adm-dl">${typeof orderLines === 'function' ? orderLines(o) : ''}</dl><div class="dlg-actions"><button class="btn-back-adm" data-x>Đóng</button></div>`) : null;
+const refreshStaff = () => { if (posTab === 'tickets') renderTickets2(); if (posTab === 'orders') renderOrders2(); if (posTab === 'find') renderFind(); if (typeof drawPos === 'function') drawPos(); };
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (typeof mkGate === 'function') mkGate('staff', 'Đăng nhập nhân viên', 'Nhập email và mật khẩu nhân viên đã được lưu trong database.', loginStaff);
+
+  const sell = $('.pos3');
+  if (sell) {
+    sell.dataset.pane = 'sell';
+    if ($('.pos-header') && !$('#pos-tabs')) {
+      $('.pos-header').insertAdjacentHTML('afterend', `<nav class="pos-tabs" id="pos-tabs"><button data-tab="sell">Bán vé</button><button data-tab="find">Tra cứu phim và suất chiếu</button><button data-tab="tickets">Tra cứu vé</button><button data-tab="orders">Đơn đặt vé</button></nav>`);
+    }
+    sell.insertAdjacentHTML('afterend', ['find', 'tickets', 'orders'].map(k => `<section class="pos-pane" data-pane="${k}" hidden></section>`).join(''));
+  }
+
+  const staffView = $('#view-staff');
+  if (staffView) {
+    staffView.addEventListener('click', e => {
+      const t = e.target.closest('[data-tab]'); if (t) return showTab(t.dataset.tab);
+      const b = e.target.closest('[data-pos]'); if (!b) return;
+      const a = b.dataset.pos, o = (window.DB?.orders || []).find(x => x.id === b.dataset.id);
+
+      if (a === 'logout') {
+        if (typeof API !== 'undefined') API.post('staff/logout').catch(() => {});
+        window.CTX.staff = null;
+        if (typeof lockView === 'function') lockView('staff');
+        if (typeof toast === 'function') toast('Đã đăng xuất');
       }
-    }).catch(err => console.warn('Lỗi ghi nhận đơn đặt vé lên hệ thống:', err.message));
+      else if (a === 'sell') sellShow(b.dataset.id);
+      else if (a === 'order' && o) showOrderDlg(o);
+      else if (a === 'use' && o) {
+        if (typeof API !== 'undefined') {
+          API.get('tickets').then(tickets => {
+            const tk = (Array.isArray(tickets) ? tickets : []).find(t => String(t.maDon || '') === String(o.id) && String(t.soGhe || '') === String(b.dataset.seat || ''));
+            if (tk) API.post(`tickets/${encodeURIComponent(tk.maVe)}/use`).catch(() => {});
+          }).catch(() => {});
+        }
+
+        if (typeof useTicket === 'function') useTicket(o, b.dataset.seat);
+        renderTickets2();
+        if (typeof toast === 'function') toast(`Đã soát vé ${o.id}-${b.dataset.seat}`);
+      }
+      else if (a === 'confirm' && o) {
+        o.st = 'ok';
+        if (typeof syncSeats === 'function') syncSeats();
+        if (o.id && typeof API !== 'undefined') API.xacNhanDon(o.id).catch(() => {});
+        refreshStaff();
+        if (typeof toast === 'function') toast(`Đã xác nhận đơn ${o.id}`);
+      }
+      else if (a === 'cancel' && o) {
+        if (typeof dlg === 'function') {
+          dlg(`<h3>Hủy đơn ${esc(o.id)}?</h3><p class="muted dark">Ghế sẽ được trả lại và đơn chuyển sang trạng thái đã hủy.</p><div class="dlg-actions"><button class="btn-back-adm" data-x>Giữ lại</button><button class="btn-adm-action danger-fill" id="pos-del-ok">Hủy đơn</button></div>`);
+          if ($('#pos-del-ok')) {
+            $('#pos-del-ok').onclick = async () => {
+              if (typeof cancelOrder === 'function') cancelOrder(o);
+              if (o.id && typeof API !== 'undefined') await API.huyDon(o.id).catch(() => {});
+              if (typeof closeDlg === 'function') closeDlg();
+              refreshStaff();
+              if (typeof toast === 'function') toast(`Đã hủy đơn ${o.id}`);
+            };
+          }
+        }
+      }
+    });
   }
-};
 
-const _posTotals = posTotals;
-posTotals = function () { CTX.inPos++; CTX.posTier = custByPhone($('#pos-phone')?.value)?.tier || 'regular'; try { _posTotals(); } finally { CTX.inPos--; } };
+  if ($('#pos-phone')) {
+    $('#pos-phone').addEventListener('input', e => {
+      const c = typeof custByPhone === 'function' ? custByPhone(e.target.value) : null, box = $('#pos-member');
+      if (box) {
+        if (c) { const t = typeof tierOf === 'function' ? tierOf(c.tier) : { n: 'Thường', pct: 0 }; box.textContent = `${c.n} · ${t.n}${t.pct ? ` · giảm ${t.pct}%` : ''}`; }
+        else box.textContent = '';
+      }
+      if (typeof posTotals === 'function') posTotals();
+    });
+  }
+});
 
-const _posPay = posPay;
-posPay = function (m) {
-  const P = S.pos, sold = soldFor(P.show), bad = P.sel.filter(s => sold.has(s.id));
-  if (bad.length) { P.sel = P.sel.filter(s => !sold.has(s.id)); drawPos(); const st = $('#pos-status'); st.className = 'pos-status error'; st.textContent = `Ghế ${bad.map(s => s.id).join(', ')} vừa được bán. Vui lòng chọn ghế khác.`; return; }
-  CTX.inPos++; CTX.posTier = custByPhone($('#pos-phone').value)?.tier || 'regular'; CTX.src = 'pos'; CTX.method = m;
-  try { _posPay(m); } finally { CTX.src = 'online'; CTX.inPos--; }
-};
-
-const _drawPos = drawPos;
-drawPos = function () { _drawPos(); const r = showRoom(S.pos.show); if (r) $('#pos-room').textContent = `· ${r.n}`; };
-
-const _posRefund = posRefund;
-posRefund = function () { const L = S.pos.last; _posRefund(); const o = L && DB.orders.find(x => x.id === L.code); if (o) { o.st = 'cancel'; syncSeats(); if (o.id) API.huyDon(o.id).catch(() => {}); } };
-
-syncLayout(); syncSeats();
-CINEMAS.forEach(c => c.rooms = DB.rooms.filter(r => r.cin === c.id).length);
+/* Xuất các hàm ra phạm vi window */
+window.loginStaff = loginStaff;
+window.paintStaff = paintStaff;
+window.showTab = showTab;
+window.renderFind = renderFind;
+window.renderTickets2 = renderTickets2;
+window.renderOrders2 = renderOrders2;

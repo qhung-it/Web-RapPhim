@@ -4,12 +4,24 @@
 let remoteOrders = [];
 let ordFilter = 'all';
 const OFILTERS = [['up', 'Sắp chiếu'], ['done', 'Đã xem'], ['cancel', 'Đã hủy'], ['all', 'Tất cả']];
+
+const safeTierOf = id => (typeof tierOf === 'function' ? tierOf(id) : (window.tierOf ? window.tierOf(id) : { n: 'Thường', pct: 0 }));
+const safeEsc = s => (typeof esc === 'function' ? esc(s) : (window.esc ? window.esc(s) : (s || '')));
+const safeFmt = n => (typeof fmt === 'function' ? fmt(n) : (window.fmt ? window.fmt(n) : (n + 'đ')));
+const safeToast = msg => (typeof toast === 'function' ? toast(msg) : (window.toast ? window.toast(msg) : console.log(msg)));
+const safeCxOpen = (html, wide) => (typeof cxOpen === 'function' ? cxOpen(html, wide) : (window.cxOpen ? window.cxOpen(html, wide) : null));
+const safeCxClose = () => (typeof cxClose === 'function' ? cxClose() : (window.cxClose ? window.cxClose() : null));
+const safeFld = (n, l, type = 'text', x = '') => (typeof fld === 'function' ? fld(n, l, type, x) : (window.fld ? window.fld(n, l, type, x) : `<label class="cx-f">${l}<input name="${n}" type="${type}" ${x}></label>`));
+const safeVal = (f, n) => (typeof val === 'function' ? val(f, n) : (window.val ? window.val(f, n) : f.elements[n]?.value.trim() || ''));
+const safeEmailOk = e => (typeof emailOk === 'function' ? emailOk(e) : /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e));
+const safePhoneOk = p => (typeof phoneOk === 'function' ? phoneOk(p) : /^0\d{9}$/.test(p));
+
 const orderId = o => String(o.maDon || o.id || '');
 const orderStatus = o => String(o.trangThai || '').toLowerCase();
 const isCanceled = o => /dahuy|da_huy|cancel/.test(orderStatus(o));
 const isPaid = o => /dathanhtoan|da_thanh_toan|paid|hoanthanh/.test(orderStatus(o));
 const showDateTime = o => [o.ngayChieu, o.gioBatDau].filter(Boolean).join(' · ') || 'Chưa có thông tin suất chiếu';
-const showSeats = o => Array.isArray(o.ghe) ? o.ghe.join(', ') : '';
+const showSeats = o => Array.isArray(o.ghe) ? o.ghe.join(', ') : (o.ghe || '');
 const showStart = o => {
   const raw = [o.ngayChieu, o.gioBatDau].filter(Boolean).join('T');
   const parsed = raw ? Date.parse(raw.length === 10 ? `${raw}T23:59:59` : raw) : NaN;
@@ -38,92 +50,122 @@ function filteredOrders(filter) {
 }
 
 async function loadCustomerOrders() {
-  if (!CTX.user || !CTX.user.id) return [];
-  // Gọi API lấy danh sách đơn đặt vé theo mã khách hàng qua API Client
-  const data = await API.layDonTheoKhachHang(CTX.user.id);
+  const user = window.CTX?.user;
+  if (!user || !user.id || typeof API === 'undefined') return [];
+  const data = await API.layDonTheoKhachHang(user.id);
   remoteOrders = Array.isArray(data) ? data : (data.orders || []);
   return remoteOrders;
 }
 
 async function openOrders(filter) {
   ordFilter = filter || ordFilter;
-  cxOpen('<h2>Đang tải lịch sử đặt vé…</h2><p class="cx-sub">Đang lấy dữ liệu từ máy chủ.</p>', true);
+  safeCxOpen('<h2>Đang tải lịch sử đặt vé…</h2><p class="cx-sub">Đang lấy dữ liệu từ máy chủ.</p>', true);
   try {
     await loadCustomerOrders();
     const all = remoteOrders, list = filteredOrders(ordFilter);
-    cxOpen(`<h2>${ordFilter === 'up' ? 'Vé của tôi' : 'Lịch sử đặt vé'}</h2>
+    safeCxOpen(`<h2>${ordFilter === 'up' ? 'Vé của tôi' : 'Lịch sử đặt vé'}</h2>
       <div class="filter-pills" id="ord-pills">${OFILTERS.map(([k, label]) => `<button class="pill${k === ordFilter ? ' active' : ''}" data-ordf="${k}">${label} (${filteredOrders(k).length})</button>`).join('')}</div>
-      <div class="cx-list">${list.length ? list.map(o => `<button class="cx-order" data-ord="${esc(orderId(o))}"><div><strong>${esc(o.tenPhim || `Đơn ${orderId(o)}`)}</strong><span>${esc(showDateTime(o))} ·${esc(o.tenRap || 'Rạp chưa xác định')}</span><span>Ghế ${esc(showSeats(o) \vert{}\vert{} 'Đang cập nhật')}</span><small>Mã đơn: ${esc(orderId(o))}</small></div><div class="r"><b>${fmt(Number(o.tongTien \vert{}\vert{} 0) - Number(o.tienGiam \vert{}\vert{} 0))}</b>${chip(ordBadge(o))}</div></button>`).join('') : `<div class="cx-empty"><p>${all.length ? 'Không có đơn trong mục này.' : 'Bạn chưa có lịch sử đặt vé.'}</p><button class="btn-glass" data-cx-close>Đóng</button></div>`}</div>`, true);
+      <div class="cx-list">${list.length ? list.map(o => `<button class="cx-order" data-ord="${safeEsc(orderId(o))}"><div><strong>${safeEsc(o.tenPhim || `Đơn ${orderId(o)}`)}</strong><span>${safeEsc(showDateTime(o))} ·${safeEsc(o.tenRap || 'Rạp chưa xác định')}</span><span>Ghế ${safeEsc(showSeats(o) \vert{}\vert{} 'Đang cập nhật')}</span><small>Mã đơn: ${safeEsc(orderId(o))}</small></div><div class="r"><b>${safeFmt(Number(o.tongTien \vert{}\vert{} 0) - Number(o.tienGiam \vert{}\vert{} 0))}</b>${chip(ordBadge(o))}</div></button>`).join('') : `<div class="cx-empty"><p>${all.length ? 'Không có đơn trong mục này.' : 'Bạn chưa có lịch sử đặt vé.'}</p><button class="btn-glass" data-cx-close>Đóng</button></div>`}</div>`, true);
   } catch (error) {
-    cxOpen(`<h2>Lịch sử đặt vé</h2><div class="cx-empty"><p>${esc(error.message || 'Không tải được lịch sử đặt vé.')}</p><button class="btn-glass" data-acct="history">Thử lại</button></div>`, true);
+    safeCxOpen(`<h2>Lịch sử đặt vé</h2><div class="cx-empty"><p>${safeEsc(error.message || 'Không tải được lịch sử đặt vé.')}</p><button class="btn-glass" data-acct="history">Thử lại</button></div>`, true);
   }
 }
 
 async function openOrder(id) {
   let o = remoteOrders.find(x => orderId(x) === id);
-  if (!o) {
+  if (!o && typeof API !== 'undefined') {
     try {
-      // Gọi API lấy chi tiết đơn qua API Client
       o = await API.layChiTietDon(id);
     } catch (error) {
-      return toast(error.message || 'Không tải được chi tiết đơn hàng.');
+      return safeToast(error.message || 'Không tải được chi tiết đơn hàng.');
     }
   }
-  if (!o) return toast('Không tìm thấy đơn hàng.');
+  if (!o) return safeToast('Không tìm thấy đơn hàng.');
   const b = ordBadge(o), cancelable = canCancel(o);
-  cxOpen(`<button class="cx-back" data-acct="back">← Quay lại danh sách</button><h2>${esc(o.tenPhim || `Đơn ${orderId(o)}`)}</h2>${chip(b)}
-    <div class="cx-ticket"><dl class="cx-dl"><dt>Mã đặt vé</dt><dd>${esc(orderId(o))}</dd><dt>Ngày đặt</dt><dd>${esc(o.ngayDat || '—')}</dd><dt>Suất chiếu</dt><dd>${esc(showDateTime(o))}</dd><dt>Rạp</dt><dd>${esc(o.tenRap || '—')}</dd><dt>Phòng</dt><dd>${esc(o.tenPhong || '—')}</dd><dt>Ghế</dt><dd>${esc(showSeats(o) || '—')}</dd></dl>
-      <div class="ticket-qr">${isCanceled(o) ? '<p class="muted">Đơn đã hủy</p>' : `<p class="muted">Mã đơn</p><strong>${esc(orderId(o))}</strong>`}</div></div>
-    <div class="cx-lines"><div><span>Tiền đơn hàng</span><b>${fmt(Number(o.tongTien) || 0)}</b></div>${Number(o.tienGiam || 0) > 0 ? `<div class="hl"><span>Giảm giá${o.maKM ? ` (${esc(o.maKM)})` : ''}</span><b>-${fmt(Number(o.tienGiam))}</b></div>` : ''}<div class="tot"><span>Tổng cần thanh toán</span><b>${fmt(Math.max(0, Number(o.tongTien || 0) - Number(o.tienGiam || 0)))}</b></div><div><span>Thanh toán</span><b>${esc(o.phuongThuc || '—')} · ${esc(o.trangThaiThanhToan || b[0])}</b></div></div>
-    <div class="cx-actions">${cancelable ? `<button class="btn-danger" data-acct="cancel" data-id="${esc(orderId(o))}">Hủy đơn</button>` : ''}</div>
+  safeCxOpen(`<button class="cx-back" data-acct="back">← Quay lại danh sách</button><h2>${safeEsc(o.tenPhim || `Đơn ${orderId(o)}`)}</h2>${chip(b)}
+    <div class="cx-ticket"><dl class="cx-dl"><dt>Mã đặt vé</dt><dd>${safeEsc(orderId(o))}</dd><dt>Ngày đặt</dt><dd>${safeEsc(o.ngayDat || '—')}</dd><dt>Suất chiếu</dt><dd>${safeEsc(showDateTime(o))}</dd><dt>Rạp</dt><dd>${safeEsc(o.tenRap || '—')}</dd><dt>Phòng</dt><dd>${safeEsc(o.tenPhong || '—')}</dd><dt>Ghế</dt><dd>${safeEsc(showSeats(o) || '—')}</dd></dl>
+      <div class="ticket-qr">${isCanceled(o) ? '<p class="muted">Đơn đã hủy</p>' : `<p class="muted">Mã đơn</p><strong>${safeEsc(orderId(o))}</strong>`}</div></div>
+    <div class="cx-lines"><div><span>Tiền đơn hàng</span><b>${safeFmt(Number(o.tongTien) || 0)}</b></div>${Number(o.tienGiam || 0) > 0 ? `<div class="hl"><span>Giảm giá${o.maKM ? ` (${safeEsc(o.maKM)})` : ''}</span><b>-${safeFmt(Number(o.tienGiam))}</b></div>` : ''}<div class="tot"><span>Tổng cần thanh toán</span><b>${safeFmt(Math.max(0, Number(o.tongTien || 0) - Number(o.tienGiam || 0)))}</b></div><div><span>Thanh toán</span><b>${safeEsc(o.phuongThuc || '—')} · ${safeEsc(o.trangThaiThanhToan || b[0])}</b></div></div>
+    <div class="cx-actions">${cancelable ? `<button class="btn-danger" data-acct="cancel" data-id="${safeEsc(orderId(o))}">Hủy đơn</button>` : ''}</div>
     ${cancelable ? '<small class="cx-hint">Đơn chỉ có thể hủy khi chưa thanh toán và còn ở trạng thái chờ thanh toán.</small>' : ''}`, true);
 }
 
 function openProfile() {
-  const u = CTX.user, t = tierOf(u.tier);
-  cxOpen(`<h2>Thông tin tài khoản</h2><p class="cx-sub">Hạng: <strong>${esc(t.n)}</strong>${t.pct ? ` · ưu đãi ${t.pct}%` : ''}</p>
-    <form data-form="profile" novalidate>${fld('n', 'Họ và tên', 'text', `value="${esc(u.n)}"`)}${fld('email', 'Email', 'email', `value="${esc(u.email)}"`)}${fld('phone', 'Số điện thoại', 'tel', `value="${esc(u.phone)}" maxlength="10"`)}${fld('dob', 'Ngày sinh', 'date', `value="${esc(u.dob || '')}"`)}<p class="form-err" role="alert"></p><button class="btn-primary-gold btn-large">Lưu thay đổi</button></form>`);
+  const u = window.CTX?.user || {};
+  const t = safeTierOf(u.tier);
+  safeCxOpen(`<h2>Thông tin tài khoản</h2><p class="cx-sub">Hạng: <strong>${safeEsc(t.n)}</strong>${t.pct ? ` · ưu đãi ${t.pct}%` : ''}</p>
+    <form data-form="profile" novalidate>${safeFld('n', 'Họ và tên', 'text', `value="${safeEsc(u.n || '')}"`)}${safeFld('email', 'Email', 'email', `value="${safeEsc(u.email || '')}"`)}${safeFld('phone', 'Số điện thoại', 'tel', `value="${safeEsc(u.phone || '')}" maxlength="10"`)}${safeFld('dob', 'Ngày sinh', 'date', `value="${safeEsc(u.dob || '')}"`)}<p class="form-err" role="alert"></p><button class="btn-primary-gold btn-large">Lưu thay đổi</button></form>`);
 }
 
 function openPw() {
-  cxOpen(`<h2>Đổi mật khẩu</h2><form data-form="pw" novalidate>${fld('old', 'Mật khẩu hiện tại', 'password')}${fld('pw', 'Mật khẩu mới', 'password')}${fld('pw2', 'Nhập lại mật khẩu mới', 'password')}<p class="form-err" role="alert"></p><button class="btn-primary-gold btn-large">Đổi mật khẩu</button></form>`);
+  safeCxOpen(`<h2>Đổi mật khẩu</h2><form data-form="pw" novalidate>${safeFld('old', 'Mật khẩu hiện tại', 'password')}${safeFld('pw', 'Mật khẩu mới', 'password')}${safeFld('pw2', 'Nhập lại mật khẩu mới', 'password')}<p class="form-err" role="alert"></p><button class="btn-primary-gold btn-large">Đổi mật khẩu</button></form>`);
 }
 
-Object.assign(FORMS, {
+window.FORMS = window.FORMS || {};
+Object.assign(window.FORMS, {
   async profile(f) {
-    const u = CTX.user, n = val(f, 'n'), email = val(f, 'email').toLowerCase(), phone = val(f, 'phone');
+    const u = window.CTX?.user || {};
+    const n = safeVal(f, 'n');
+    const email = safeVal(f, 'email').toLowerCase();
+    const phone = safeVal(f, 'phone');
+
     if (n.length < 2) return 'Vui lòng nhập họ tên.';
-    if (!emailOk(email)) return 'Email không hợp lệ.';
-    if (!phoneOk(phone)) return 'Số điện thoại gồm 10 chữ số, bắt đầu bằng 0.';
+    if (!safeEmailOk(email)) return 'Email không hợp lệ.';
+    if (!safePhoneOk(phone)) return 'Số điện thoại gồm 10 chữ số, bắt đầu bằng 0.';
+
     try {
-      // Gọi API cập nhật thông tin cá nhân
-      const result = await API.post('auth/update-profile', { maKH: u.id, hoTen: n, email, soDienThoai: phone, ngaySinh: val(f, 'dob') || null });
+      if (typeof API === 'undefined') throw new Error('Chưa kết nối API');
+      const result = await API.post('auth/update-profile', { maKH: u.id, hoTen: n, email, soDienThoai: phone, ngaySinh: safeVal(f, 'dob') || null });
       const uDto = result.user || result || {};
-      Object.assign(u, { n: uDto.hoTen || n, email: uDto.email || email, phone: uDto.soDienThoai || phone, dob: uDto.ngaySinh || val(f, 'dob') });
-      renderAcct(); cxClose(); toast('Đã cập nhật thông tin'); return '';
-    } catch (error) { return error.message || 'Không thể cập nhật hồ sơ.'; }
+      Object.assign(u, { n: uDto.hoTen || n, email: uDto.email || email, phone: uDto.soDienThoai || phone, dob: uDto.ngaySinh || safeVal(f, 'dob') });
+      if (typeof renderAcct === 'function') renderAcct();
+      else if (typeof window.renderAcct === 'function') window.renderAcct();
+      safeCxClose();
+      safeToast('Đã cập nhật thông tin');
+      return '';
+    } catch (error) {
+      return error.message || 'Không thể cập nhật hồ sơ.';
+    }
   },
   async pw(f) {
-    if (f.elements.pw.value.length < 6) return 'Mật khẩu mới tối thiểu 6 ký tự.';
-    if (f.elements.pw.value !== f.elements.pw2.value) return 'Mật khẩu nhập lại không khớp.';
+    if ((f.elements.pw?.value || '').length < 6) return 'Mật khẩu mới tối thiểu 6 ký tự.';
+    if (f.elements.pw?.value !== f.elements.pw2?.value) return 'Mật khẩu nhập lại không khớp.';
+
     try {
-      // Gọi API đổi mật khẩu
-      await API.post('auth/change-password', { maKH: CTX.user?.id, matKhauCu: f.elements.old.value, matKhauMoi: f.elements.pw.value });
-      cxClose(); toast('Đã đổi mật khẩu'); return '';
+      if (typeof API === 'undefined') throw new Error('Chưa kết nối API');
+      await API.post('auth/change-password', { maKH: window.CTX?.user?.id, matKhauCu: f.elements.old?.value, matKhauMoi: f.elements.pw?.value });
+      safeCxClose();
+      safeToast('Đã đổi mật khẩu');
+      return '';
+    } catch (error) {
+      return error.message || 'Không thể đổi mật khẩu.';
     }
-    catch (error) { return error.message || 'Không thể đổi mật khẩu.'; }
   }
 });
 
 document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('click', async e => {
-    const a = e.target.closest('[data-acct]'), pf = e.target.closest('[data-ordf]'), od = e.target.closest('[data-ord]');
+    const a = e.target.closest('[data-acct]');
+    const pf = e.target.closest('[data-ordf]');
+    const od = e.target.closest('[data-ord]');
+
     if (pf) return openOrders(pf.dataset.ordf);
     if (od) return openOrder(od.dataset.ord);
     if (!a) return;
-    const act = a.dataset.acct, menu = $('.acct-menu');
-    if (act === 'toggle') { menu.hidden = !menu.hidden; a.setAttribute('aria-expanded', !menu.hidden); return; }
+
+    const act = a.dataset.acct;
+    const menu = document.querySelector('.acct-menu');
+
+    if (act === 'toggle') {
+      if (menu) {
+        menu.hidden = !menu.hidden;
+        a.setAttribute('aria-expanded', !menu.hidden);
+      }
+      return;
+    }
+
     if (menu) menu.hidden = true;
+
     if (act === 'tickets') { ordFilter = 'up'; openOrders('up'); }
     else if (act === 'history') { ordFilter = 'all'; openOrders('all'); }
     else if (act === 'back') openOrders();
@@ -131,23 +173,39 @@ document.addEventListener('DOMContentLoaded', () => {
     else if (act === 'pw') openPw();
     else if (act === 'logout') {
       try {
-        // Gọi API đăng xuất
-        await API.post('auth/logout').catch(() => {});
+        if (typeof API !== 'undefined') await API.post('auth/logout').catch(() => {});
       } catch (error) {
-        return toast(error.message || 'Không thể đăng xuất khỏi máy chủ.');
+        return safeToast(error.message || 'Không thể đăng xuất khỏi máy chủ.');
       }
-      CTX.user = null; remoteOrders = []; renderAcct(); closeModal(); closeDetail(); cxClose(); toast('Đã đăng xuất');
+      if (window.CTX) window.CTX.user = null;
+      remoteOrders = [];
+      if (typeof renderAcct === 'function') renderAcct();
+      else if (typeof window.renderAcct === 'function') window.renderAcct();
+      if (typeof closeModal === 'function') closeModal();
+      if (typeof closeDetail === 'function') closeDetail();
+      safeCxClose();
+      safeToast('Đã đăng xuất');
     } else if (act === 'cancel') {
-      const id = a.dataset.id, o = remoteOrders.find(x => orderId(x) === id);
-      if (!o || !canCancel(o)) return toast('Đơn này không thể hủy.');
+      const id = a.dataset.id;
+      const o = remoteOrders.find(x => orderId(x) === id);
+      if (!o || !canCancel(o)) return safeToast('Đơn này không thể hủy.');
       a.disabled = true;
       try {
-        // Gọi API hủy đơn hàng qua API Client
-        await API.huyDon(id);
+        if (typeof API !== 'undefined') await API.huyDon(id);
         await loadCustomerOrders();
-        toast(`Đã gửi yêu cầu hủy đơn ${id}.`);
+        safeToast(`Đã gửi yêu cầu hủy đơn ${id}.`);
         openOrder(id);
-      } catch (error) { toast(error.message || 'Không thể hủy đơn.'); a.disabled = false; }
+      } catch (error) {
+        safeToast(error.message || 'Không thể hủy đơn.');
+        a.disabled = false;
+      }
     }
   });
 });
+
+/* Xuất các hàm ra phạm vi window */
+window.loadCustomerOrders = loadCustomerOrders;
+window.openOrders = openOrders;
+window.openOrder = openOrder;
+window.openProfile = openProfile;
+window.openPw = openPw;

@@ -5,65 +5,16 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="0992ceac-9e9d-41ca-aad3-dcbc4decdb39" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.smarttomcat/App-RapPhim/conf/catalina.policy" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.smarttomcat/App-RapPhim/conf/catalina.properties" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.smarttomcat/App-RapPhim/conf/context.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.smarttomcat/App-RapPhim/conf/jaspic-providers.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.smarttomcat/App-RapPhim/conf/jaspic-providers.xsd" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.smarttomcat/App-RapPhim/conf/logging.properties" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.smarttomcat/App-RapPhim/conf/server.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.smarttomcat/App-RapPhim/conf/tomcat-users.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.smarttomcat/App-RapPhim/conf/tomcat-users.xsd" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.smarttomcat/App-RapPhim/conf/web.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/ComboController.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/DonDatVeController.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/GheController.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/KhuyenMaiController.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/NhanVienController.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/PhimController.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/SuatChieuController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/.gitignore" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/BanVeController.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/ChiTietPhimController.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/ChonComboController.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/ChonGheController.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/DangKyController.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/DangNhapController.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/KhachHangController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/KhachHangController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/KiemTraVeController.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/QuanLyComboController.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/QuanLyDonDatVeController.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/QuanLyGheController.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/QuanLyKhachHangController.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/QuanLyKhuyenMaiController.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/QuanLyLoaiKhachHangController.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/QuanLyNhanVienController.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/QuanLyPhimController.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/QuanLyPhongChieuController.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/QuanLyRapController.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/QuanLySuatChieuController.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/QuenMatKhauController.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/TaiKhoanKhachHangController.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/ThanhToanController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/ThanhToanController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/ThongKeDoanhThuController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/ThongKeDoanhThuController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/TrangChuKhachHangController.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/TrangChuNhanVienController.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/controller/XacNhanDonController.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/web/ApiServlet.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/studentapp/apprapphim/web/ApiServlet.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/webapp/account.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/webapp/account.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/webapp/admin-pro.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/webapp/admin-pro.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/webapp/api-client.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/webapp/api-client.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/webapp/api-integration.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/webapp/api-integration.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/webapp/auth.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/webapp/auth.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/webapp/features.css" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/webapp/features.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/webapp/indexcnm.html" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/webapp/indexcnm.html" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/webapp/movies-ext.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/webapp/movies-ext.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/webapp/scriptcnm.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/webapp/scriptcnm.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/webapp/staff-pro.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/webapp/staff-pro.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/webapp/store.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/webapp/store.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/webapp/stylecnm.css" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/webapp/stylecnm.css" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -94,30 +45,30 @@
       </MavenGeneralSettings>
     </option>
   </component>
-  <component name="ProjectColorInfo"><![CDATA[{
-  "customColor": "",
-  "associatedIndex": 7
-}]]></component>
+  <component name="ProjectColorInfo">{
+  &quot;customColor&quot;: &quot;&quot;,
+  &quot;associatedIndex&quot;: 7
+}</component>
   <component name="ProjectId" id="3KduFyESOZa9fEQndixs46ETR28" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "Application.TestDatabase.executor": "Run",
-    "Maven.App-RapPhim [clean].executor": "Run",
-    "Maven.App-RapPhim [package].executor": "Run",
-    "ModuleVcsDetector.initialDetectionPerformed": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "Smart Tomcat.Unnamed.executor": "Run",
-    "git-widget-placeholder": "feature/controller",
-    "kotlin-language-version-configured": "true",
-    "last_opened_file_path": "D:/A LÂM/CNPM/Project ck/Web-RapPhim",
-    "settings.editor.selected.configurable": "com.poratu.idea.plugins.tomcat.setting.TomcatServersConfigurable"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;Application.TestDatabase.executor&quot;: &quot;Run&quot;,
+    &quot;Maven.App-RapPhim [clean].executor&quot;: &quot;Run&quot;,
+    &quot;Maven.App-RapPhim [package].executor&quot;: &quot;Run&quot;,
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;Smart Tomcat.Unnamed.executor&quot;: &quot;Run&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;feature/controller&quot;,
+    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;D:/A LÂM/CNPM/Project ck/Web-RapPhim&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;com.poratu.idea.plugins.tomcat.setting.TomcatServersConfigurable&quot;
   }
-}]]></component>
+}</component>
   <component name="RunManager" selected="Smart Tomcat.Unnamed">
     <configuration name="TestDatabase" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
       <option name="MAIN_CLASS_NAME" value="com.example.studentapp.apprapphim.TestDatabase" />
@@ -147,9 +98,6 @@
       <option name="catalinaBase" value="C:\Users\ADMIN\.SmartTomcat\Web-RapPhim\App-RapPhim" />
       <option name="contextPath" value="/" />
       <option name="docBase" value="$PROJECT_DIR$/src/main/webapp" />
-      <option name="envOptions">
-        <map />
-      </option>
       <option name="extraClassPath" value="" />
       <option name="tomcatInfo">
         <TomcatInfo>

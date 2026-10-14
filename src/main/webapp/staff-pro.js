@@ -19,7 +19,7 @@ const PF = { q: '', date: '', cin: '' }, PT = { q: '', st: 'all' }, PO = { q: ''
 /* Xác thực đăng nhập nhân viên qua API */
 async function loginStaff(u, p) {
   try {
-    const data = typeof API.dangNhapNhanVien === 'function'
+    const data = typeof API !== 'undefined' && typeof API.dangNhapNhanVien === 'function'
       ? await API.dangNhapNhanVien(u, p)
       : await API.post('staff/login', { email: u, password: p });
 
@@ -42,7 +42,8 @@ async function loginStaff(u, p) {
 
 function paintStaff() {
   const s = CTX.staff, p = perm();
-  if ($('.pos-user')) {$('.pos-user').innerHTML = `${esc(s.role)}: ${esc(s.n)} (#${esc(s.id.toUpperCase())}) <button class="btn-glass pos-logout" data-pos="logout">Đăng xuất</button>`;
+  if ($('.pos-user')) {
+    $('.pos-user').innerHTML = `${esc(s.role)}: ${esc(s.n)} (#${esc(s.id.toUpperCase())}) <button class="btn-glass pos-logout" data-pos="logout">Đăng xuất</button>`;
   }
   $$('#pos-tabs [data-tab]').forEach(b => b.hidden = (b.dataset.tab === 'sell' && !p.sell) || (b.dataset.tab === 'orders' && !p.orders) || (b.dataset.tab === 'tickets' && !p.tickets));
   showTab(p.sell ? 'sell' : p.tickets ? 'tickets' : 'find');
@@ -50,8 +51,8 @@ function paintStaff() {
 
 function showTab(t) {
   posTab = t;
-  $$('#pos-tabs [data-tab]').forEach(b => b.classList.toggle('active', b.dataset.tab === t)); $$
-('#view-staff [data-pane]').forEach(p => p.hidden = p.dataset.pane !== t);
+  $$('#pos-tabs [data-tab]').forEach(b => b.classList.toggle('active', b.dataset.tab === t));
+  $$('#view-staff [data-pane]').forEach(p => p.hidden = p.dataset.pane !== t);
   if (t === 'find') renderFind(true);
   if (t === 'tickets') renderTickets2(true);
   if (t === 'orders') renderOrders2(true);
@@ -74,7 +75,7 @@ function renderFind(full) {
   if ($('#pf-res')) {
     $('#pf-res').innerHTML = rows.length ? `<table class="pos-table"><thead><tr><th>Phim</th><th>Giờ chiếu</th><th>Rạp · Phòng</th><th>Ghế trống</th><th></th></tr></thead><tbody>${rows.map(s => {
       const m = movieById(s.m), r = roomById(s.r), c = CINEMAS.find(x => x.id === r.cin) || CINEMAS[0], free = Math.max(0, cap - soldFor({ m, date: s.date, cin: c, time: s.time }).size), past = date === DATES[0].k && s.time < nowStr;
-      return `<tr><td><strong>${esc(m.t)}</strong><small>${esc(m.d)} · ${esc(m.age)} ·${esc(m.g)} · ${esc(m.fm.join('/'))}</small></td><td>${s.time} – ${endTime(s.time, m)}</td><td>${esc(c.n)} · ${esc(r.n)}</td><td>${free}/${cap}</td><td>${perm().sell ? `<button class="btn-glass" data-pos="sell" data-id="${s.id}" ${past || !free ? 'disabled' : ''}>Bán vé</button>` : ''}</td></tr>`;
+      return `<tr><td><strong>${esc(m.t)}</strong><small>${esc(m.d)} · ${esc(m.age)} · ${esc(m.g)} · ${esc(m.fm.join('/'))}</small></td><td>${s.time} – ${endTime(s.time, m)}</td><td>${esc(c.n)} · ${esc(r.n)}</td><td>${free}/${cap}</td><td>${perm().sell ? `<button class="btn-glass" data-pos="sell" data-id="${s.id}" ${past || !free ? 'disabled' : ''}>Bán vé</button>` : ''}</td></tr>`;
     }).join('')}</tbody></table>` : '<p class="muted pos-empty">Không có suất chiếu phù hợp.</p>';
   }
 }
@@ -98,7 +99,7 @@ function renderTickets2(full) {
   }
   const rows = ticketRows(PT.q, PT.st);
   if ($('#pt-res')) {
-    $('#pt-res').innerHTML = rows.length ? `<table class="pos-table"><thead><tr><th>Mã vé</th><th>Phim</th><th>Suất · Phòng</th><th>Ghế</th><th>Khách</th><th>Trạng thái</th><th></th></tr></thead><tbody>${rows.slice(0, 60).map(t => `<tr><td><code>${esc(t.code)}</code></td><td>${esc(t.o.movie)}</td><td>${esc(t.o.time)} ·${esc(t.o.date || '')}<small>${esc(t.o.room \vert{}\vert{} '')}</small></td><td>${esc(t.seat)}</td><td>${esc(custName(t.o))}</td><td>${chip(TK_ST[t.status])}</td>
+    $('#pt-res').innerHTML = rows.length ? `<table class="pos-table"><thead><tr><th>Mã vé</th><th>Phim</th><th>Suất · Phòng</th><th>Ghế</th><th>Khách</th><th>Trạng thái</th><th></th></tr></thead><tbody>${rows.slice(0, 60).map(t => `<tr><td><code>${esc(t.code)}</code></td><td>${esc(t.o.movie)}</td><td>${esc(t.o.time)} · ${esc(t.o.date || '')}<small>${esc(t.o.room || '')}</small></td><td>${esc(t.seat)}</td><td>${esc(custName(t.o))}</td><td>${chip(TK_ST[t.status])}</td>
       <td>${t.status === 'valid' ? `<button class="btn-glass" data-pos="use" data-id="${esc(t.o.id)}" data-seat="${esc(t.seat)}">Soát vé</button>` : ''}<button class="btn-glass" data-pos="order" data-id="${esc(t.o.id)}">Chi tiết</button></td></tr>`).join('')}</tbody></table>${rows.length > 60 ? `<p class="muted pos-empty">Hiển thị 60/${rows.length} vé. Hãy nhập thêm từ khóa.</p>` : ''}` : '<p class="muted pos-empty">Không tìm thấy vé.</p>';
   }
 }
@@ -115,7 +116,7 @@ function renderOrders2(full) {
   const q = norm(PO.q.trim()), p = perm(), rows = DB.orders.filter(o => (PO.st === 'all' || o.st === PO.st) && (!q || norm([o.id, o.movie, custName(o), DB.customers.find(c => c.id === o.cust)?.phone, o.guest?.phone].join(' ')).includes(q))).slice(0, 60);
 
   if ($('#po-res')) {
-    $('#po-res').innerHTML = rows.length ? `<table class="pos-table"><thead><tr><th>Mã đơn</th><th>Phim · Suất</th><th>Ghế</th><th>Khách</th><th>Tổng</th><th>Trạng thái</th><th></th></tr></thead><tbody>${rows.map(o => `<tr><td><code>${esc(o.id)}</code></td><td>${esc(o.movie)}<small>${esc(o.time)} ·${esc(o.date || '')}</small></td><td>${esc(o.seats)}</td><td>${esc(custName(o))}</td><td>${fmt(Number(o.total) \vert{}\vert{} 0)}</td><td>${chip(ordBadge(o))}</td>
+    $('#po-res').innerHTML = rows.length ? `<table class="pos-table"><thead><tr><th>Mã đơn</th><th>Phim · Suất</th><th>Ghế</th><th>Khách</th><th>Tổng</th><th>Trạng thái</th><th></th></tr></thead><tbody>${rows.map(o => `<tr><td><code>${esc(o.id)}</code></td><td>${esc(o.movie)}<small>${esc(o.time)} ·${esc(o.date || '')}</small></td><td>${esc(o.seats)}</td><td>${esc(custName(o))}</td><td>${fmt(Number(o.total) || 0)}</td><td>${chip(ordBadge(o))}</td>
       <td><button class="btn-glass" data-pos="order" data-id="${esc(o.id)}">Chi tiết</button>${o.st === 'wait' && p.confirm ? `<button class="btn-glass" data-pos="confirm" data-id="${esc(o.id)}">Xác nhận</button>` : ''}${o.st !== 'cancel' && !(o.used || []).length && (o.st === 'wait' || p.cancelAny) ? `<button class="btn-glass danger" data-pos="cancel" data-id="${esc(o.id)}">Hủy đơn</button>` : ''}</td></tr>`).join('')}</tbody></table>` : '<p class="muted pos-empty">Không có đơn phù hợp.</p>';
   }
 }
@@ -143,7 +144,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const a = b.dataset.pos, o = DB.orders.find(x => x.id === b.dataset.id);
 
       if (a === 'logout') {
-        API.post('staff/logout').catch(() => {});
+        if (typeof API !== 'undefined') API.post('staff/logout').catch(() => {});
         CTX.staff = null;
         lockView('staff');
         toast('Đã đăng xuất');
@@ -151,11 +152,12 @@ document.addEventListener('DOMContentLoaded', () => {
       else if (a === 'sell') sellShow(b.dataset.id);
       else if (a === 'order' && o) showOrderDlg(o);
       else if (a === 'use' && o) {
-        // Đồng bộ soát vé qua API
-        API.get('tickets').then(tickets => {
-          const tk = (Array.isArray(tickets) ? tickets : []).find(t => String(t.maDon || '') === String(o.id) && String(t.soGhe || '') === String(b.dataset.seat || ''));
-          if (tk) API.post(`tickets/${encodeURIComponent(tk.maVe)}/use`).catch(() => {});
-        }).catch(() => {});
+        if (typeof API !== 'undefined') {
+          API.get('tickets').then(tickets => {
+            const tk = (Array.isArray(tickets) ? tickets : []).find(t => String(t.maDon || '') === String(o.id) && String(t.soGhe || '') === String(b.dataset.seat || ''));
+            if (tk) API.post(`tickets/${encodeURIComponent(tk.maVe)}/use`).catch(() => {});
+          }).catch(() => {});
+        }
 
         useTicket(o, b.dataset.seat);
         renderTickets2();
@@ -164,7 +166,7 @@ document.addEventListener('DOMContentLoaded', () => {
       else if (a === 'confirm' && o) {
         o.st = 'ok';
         syncSeats();
-        if (o.id) API.xacNhanDon(o.id).catch(() => {});
+        if (o.id && typeof API !== 'undefined') API.xacNhanDon(o.id).catch(() => {});
         refreshStaff();
         toast(`Đã xác nhận đơn ${o.id}`);
       }
@@ -172,7 +174,7 @@ document.addEventListener('DOMContentLoaded', () => {
         dlg(`<h3>Hủy đơn ${esc(o.id)}?</h3><p class="muted dark">Ghế sẽ được trả lại và đơn chuyển sang trạng thái đã hủy.</p><div class="dlg-actions"><button class="btn-back-adm" data-x>Giữ lại</button><button class="btn-adm-action danger-fill" id="pos-del-ok">Hủy đơn</button></div>`);
         $('#pos-del-ok').onclick = async () => {
           cancelOrder(o);
-          if (o.id) await API.huyDon(o.id).catch(() => {});
+          if (o.id && typeof API !== 'undefined') await API.huyDon(o.id).catch(() => {});
           closeDlg();
           refreshStaff();
           toast(`Đã hủy đơn ${o.id}`);
